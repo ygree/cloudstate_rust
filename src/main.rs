@@ -26,7 +26,7 @@ pub struct GetShoppingCart {
 
 trait Message {}
 
-#[derive(PartialEq,Clone,Default)]
+#[derive(PartialEq,Clone,Default, Debug)]
 pub struct LineItem {
     // message fields
     pub product_id: ::std::string::String,
@@ -35,6 +35,7 @@ pub struct LineItem {
 }
 
 // this also used as a state snapshot
+#[derive(PartialEq,Clone,Default, Debug)]
 pub struct Cart {
     // message fields
     // pub items: ::protobuf::RepeatedField<LineItem>,
@@ -70,12 +71,40 @@ impl Context {
     fn persist_event<T: Message>(&mut self, event: T) {}
 }
 
+trait Entity {
+    type Snapshot;
+    fn snapshot(self: &Self) -> Self::Snapshot;
+    fn restore(snapshot: Self::Snapshot) -> Self;
+    fn empty() -> Self;
+}
+
 // entity state
 struct ShopCart {
     items: Vec<LineItem>,
 }
 
-// command handler
+// mandatory entity methods
+impl Entity for ShopCart {
+    type Snapshot = Cart;
+
+    fn snapshot(self: &Self) -> Self::Snapshot {
+        self.get_cart()
+    }
+
+    fn restore(cart: Self::Snapshot) -> Self {
+        ShopCart {
+            items : cart.items,
+        }
+    }
+
+    fn empty() -> Self {
+        ShopCart {
+            items : vec![],
+        }
+    }
+}
+
+//TODO needed a macro to bind command and event handlers with the gRPC service implementation
 impl ShopCart {
 
     // command handler
@@ -90,21 +119,7 @@ impl ShopCart {
     // read-only command handler
     fn get_cart(self: &ShopCart) -> Cart {
         Cart {
-            items: self.items.clone() // need to clone, maybe return a reference somehow?
-        }
-    }
-
-    // initial empty state
-    fn empty() -> Cart {
-        Cart {
-            items : vec!(),
-        }
-    }
-
-    // init state out of the snapshot
-    fn init(cart: Cart) -> ShopCart {
-        ShopCart {
-            items : cart.items,
+            items : self.items.clone(),
         }
     }
 
@@ -122,13 +137,25 @@ impl ShopCart {
     }
 }
 
-struct Entity {}
-
-impl Entity {
-
-}
 
 fn main() {
 
+    let cart = Cart {
+        items: vec![
+            LineItem {
+                product_id: "1234".to_string(),
+                name: "Milk".to_string(),
+                quantity: 1,
+            }
+        ]
+    };
+
+    let entity = ShopCart::restore(cart.clone());
+
+    let cart1 = entity.get_cart();
+
+    assert_eq!(cart, cart1);
+
+    // entity.add_item()
 
 }
