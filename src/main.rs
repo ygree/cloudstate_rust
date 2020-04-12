@@ -104,7 +104,8 @@ impl Entity for ShopCart {
     }
 }
 
-//TODO needed a macro to bind command and event handlers with the gRPC service implementation
+//TODO bind command handlers with the gRPC service implementation
+//TODO bind event handlers with the command handlers to persist events
 impl ShopCart {
 
     // command handler
