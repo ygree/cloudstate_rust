@@ -1,6 +1,22 @@
 
+## Project
+
+A Rust version of [Cloudstate](https://cloudstate.io/docs/index.html) client application.
+
+### protocols
+
+Contains [original protobuf files](https://github.com/cloudstateio/cloudstate/tree/master/protocols).
+
+- [] How to generate compilable code? Maybe need to use PROTOC! macros for importing generated files?
+
+### spike
+
+A spike version of Cloudstate client application. Work in progress!
+
 
 ## :TODO: Add shopping_cart proto files to the project and generate Rust files with PROST! or tonic_build
+
+How to compile proto files into the sources?
 
 ## :TODO: Implement dummy EventSourced service
 
