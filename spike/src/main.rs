@@ -2,6 +2,19 @@
 
 use std::convert::Infallible;
 
+use protocols::cloudstate::eventsourced::event_sourced_server::EventSourced;
+use protocols::cloudstate::eventsourced::{EventSourcedStreamIn, EventSourcedStreamOut};
+use tonic::{Status, Streaming, Response, Request};
+
+struct MyEventSourced;
+
+impl EventSourced for MyEventSourced {
+    type handleStream = ();
+
+    async fn handle(&self, request: Request<Streaming<EventSourcedStreamIn>>) -> Result<Response<Self::handleStream>, Status> {
+        unimplemented!()
+    }
+}
 
 pub struct AddLineItem {
     // message fields
