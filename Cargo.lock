@@ -96,6 +96,7 @@ name = "eventsourced-spike"
 version = "0.1.0"
 dependencies = [
  "async-stream",
+ "cloudstate",
  "futures-core",
  "futures-util",
  "prost",

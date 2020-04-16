@@ -2,9 +2,6 @@
 
 use std::convert::Infallible;
 
-// use cloudstate123;
-// mod cloudstate123.eventsourced;
-// use crate::cloudstate123::eventsourced;
 
 pub struct AddLineItem {
     // message fields
