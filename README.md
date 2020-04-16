@@ -27,6 +27,7 @@ A spike version of Cloudstate client application.
     https://github.com/hyperium/tonic/blob/master/examples/src/authentication/server.rs#L56
     
 - [ ] Implement some EventSourced service interaction and find a way to test it
+    [Bi-directional gRPC streaming with Tonic](https://github.com/hyperium/tonic/blob/master/examples/routeguide-tutorial.md#server-state)
     [Async steams](https://github.com/tokio-rs/async-stream)
 
 - [ ] Bind EventSourced service to the ShopCart entity manually
