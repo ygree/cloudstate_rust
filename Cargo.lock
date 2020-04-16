@@ -75,7 +75,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb1f6b1ce1c140482ea30ddd3335fc0024ac7ee112895426e0a629a6c20adfe3"
 
 [[package]]
-name = "eventsourced-spike"
+name = "entity-spike"
 version = "0.1.0"
 dependencies = [
  "async-stream",
@@ -634,6 +634,23 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "server-spike"
+version = "0.1.0"
+dependencies = [
+ "async-stream",
+ "futures-core",
+ "futures-util",
+ "prost",
+ "prost-types",
+ "protocols",
+ "rand",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tonic",
 ]
 
 [[package]]

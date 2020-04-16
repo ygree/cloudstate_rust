@@ -2,6 +2,7 @@
 
 members = [
     "protocols",
-    "spike",
+    "entity_spike",
+    "server_spike",
 ]
 
