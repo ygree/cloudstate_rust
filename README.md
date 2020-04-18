@@ -9,8 +9,10 @@ A Rust version of [Cloudstate](https://cloudstate.io/docs/index.html) client app
 
 https://github.com/uw-labs/bloomrpc
 
+**NOTE**: Set Import Paths to `eventsourced-spike/protocols/protocol` before importing `event_sourced.proto`. Otherwise it will fail with:
 ```
-
+Error while importing protos
+no such Type or Enum 'ClientAction' in Type .cloudstate.eventsourced.EventSourcedReply
 ```
 
 
