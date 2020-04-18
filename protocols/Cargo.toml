@@ -10,11 +10,10 @@ edition = "2018"
 tonic = "0.2"
 prost = "0.6"
 prost-types = "0.6"
-futures-core = "0.3"
-futures-util = "0.3"
-tokio = { version = "0.2", features = ["macros", "sync", "stream", "time"] }
-
+tokio = { version = "0.2", features = ["rt-threaded", "time", "stream", "fs", "macros", "uds"] }
+futures = { version = "0.3", default-features = false, features = ["alloc"] }
 async-stream = "0.2"
+tower = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 rand = "0.7"
