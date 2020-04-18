@@ -101,21 +101,21 @@ impl Entity for ShopCart {
 //TODO bind event handlers with the command handlers to persist events
 impl ShopCart {
     // command handler
-    fn add_item(self: &ShopCart, item: LineItem, ctx: &mut Context) {
+    fn add_item(&self, item: LineItem, ctx: &mut Context) {
         //NOTE. cart is read only
         let evt = ItemAdded { item: Some(item) };
         ctx.persist_event(evt);
     }
 
     // read-only command handler
-    fn get_cart(self: &ShopCart) -> Cart {
+    fn get_cart(&self) -> Cart {
         Cart {
             items: self.items.clone(),
         }
     }
 
     // event handler
-    fn item_added(self: &mut ShopCart, event: ItemAdded) {
+    fn item_added(&mut self, event: ItemAdded) {
         if let Some(item) = event.item {
             //TODO find if it already exists
             self.items.push(item);
@@ -123,8 +123,87 @@ impl ShopCart {
     }
 
     // event handler
-    fn item_removed(self: &mut ShopCart, event: ItemRemoved) {
+    fn item_removed(&mut self, event: ItemRemoved) {
         //TODO find and remove item by event.productId
+    }
+}
+
+mod multi_state_shop_cart {
+    // experiment with multi-state behavior
+
+    use super::{LineItem, Context, ItemAdded};
+
+    enum ShopCartState {
+        Empty(ShopCartEmpty),
+        Open(ShopCartOpen),
+        Closed(ShopCartClosed),
+    }
+
+    struct ShopCartEmpty();
+    impl ShopCartBehavior for ShopCartEmpty {
+        //use default behavior
+    }
+
+    struct ShopCartOpen {
+        items: Vec<LineItem>,
+    }
+    impl ShopCartBehavior for ShopCartOpen {
+        //use default behavior
+    }
+
+    struct ShopCartClosed();
+    impl ShopCartBehavior for ShopCartClosed {
+        fn add_item(&self, item: LineItem, ctx: &mut Context) {
+            //TODO return an error on the attempt to add item into a closed shopcart
+        }
+    }
+
+    // behavior trait with default implementations
+    trait ShopCartBehavior {
+        fn add_item(&self, item: LineItem, ctx: &mut Context) {
+            let evt = ItemAdded { item: Some(item) };
+            ctx.persist_event(evt);
+        }
+    }
+
+    // behavior dispatcher (should be possible to generate with a macro)
+    impl ShopCartBehavior for ShopCartState {
+        fn add_item(&self, item: LineItem, ctx: &mut Context) {
+            match self {
+                ShopCartState::Empty(state) => state.add_item(item, ctx),
+                ShopCartState::Open(state) => state.add_item(item, ctx),
+                ShopCartState::Closed(state) => state.add_item(item, ctx),
+            }
+        }
+    }
+
+
+    trait ShopCartEventHandler {
+        fn item_added(&mut self, event: ItemAdded) {}
+    }
+
+    impl ShopCartEventHandler for ShopCartState {
+        fn item_added(&mut self, event: ItemAdded) {
+            if let Some(item) = event.item {
+                match self {
+                    ShopCartState::Empty(state) => {
+                        // State transition can only be done in the dispatcher handler because
+                        // specialized handler won't have access to ShopCartState.
+                        *self = ShopCartState::Open(ShopCartOpen{
+                            items: vec![item],
+                        });
+                    },
+                    ShopCartState::Open(state) => {
+                        state.items.push(item);
+                    },
+                    ShopCartState::Closed(state) => {
+                        //TODO what if unexpected event received?
+                        // Maybe signal about event log inconsistency for the current entity.
+                        // Needed some context for that.
+                    },
+                }
+            }
+        }
     }
 }
 

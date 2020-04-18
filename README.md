@@ -4,9 +4,12 @@
 A Rust version of [Cloudstate](https://cloudstate.io/docs/index.html) client application.
 
 Links:
-------
+======
 
-gRPC client: https://github.com/uw-labs/bloomrpc
+gRPC clients:
+-------------
+https://github.com/uw-labs/bloomrpc
+https://github.com/fullstorydev/grpcui
 
 ### protocols
 
