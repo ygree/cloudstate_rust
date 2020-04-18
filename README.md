@@ -3,6 +3,11 @@
 
 A Rust version of [Cloudstate](https://cloudstate.io/docs/index.html) client application.
 
+Links:
+------
+
+gRPC client: https://github.com/uw-labs/bloomrpc
+
 ### protocols
 
 Contains [original protobuf files](https://github.com/cloudstateio/cloudstate/tree/master/protocols).

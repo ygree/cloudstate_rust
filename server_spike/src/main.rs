@@ -13,34 +13,49 @@ struct EventSourcedServerImpl;
 
 #[tonic::async_trait]
 impl EventSourced for EventSourcedServerImpl {
+    // it has generated a type with the first letter in lower case
+    // TODO: consider fixing it
     type handleStream = Pin<Box<dyn Stream<Item = Result<EventSourcedStreamOut, Status>> + Send + Sync + 'static>>;
 
     //TODO https://github.com/hyperium/tonic/blob/master/examples/routeguide-tutorial.md#bidirectional-streaming-rpc
 
-    async fn handle(&self, request: Request<tonic::Streaming<EventSourcedStreamIn>>) -> Result<Response<Self::handleStream>, Status> {
+    async fn handle(&self, request: Request<Streaming<EventSourcedStreamIn>>) -> Result<Response<Self::handleStream>, Status> {
         let mut stream = request.into_inner();
 
-        //         // match message {
-        //         //     event_sourced_stream_in::Message::Init(init) => (),
-        //         //     event_sourced_stream_in::Message::Event(init) => (),
-        //         //     event_sourced_stream_in::Message::Command(init) => (),
-        //         // }
-        // // //         //TODO
-        //         let msg = EventSourcedStreamOut {
-        //             message: None,
-        //         }
-        //         yield Response::new(msg);
-
-        //message: event_sourced_stream_in::Message
-
         let output = async_stream::try_stream! {
-            while let Some(message) = stream.message().await? {
             // while let Some(message) = stream.next().await {
-                let msg = EventSourcedStreamOut {
-                    message: None,
-                };
-                yield msg;
+            // got from the examples but it doesn't work, perhaps in previous version of tonic before 0.2.0
+            // TODO: maybe submit a PR?
+
+            while let Some(in_msg) = stream.message().await? { // msg: EventSourcedStreamIn
+
+                if let Some(known_msg) = in_msg.message {
+                    // none if protobuf version has unknown enum
+
+                    use event_sourced_stream_in::Message::*;
+
+                    match known_msg {
+                        Init(init) => {
+                            println!("init")
+                        },
+                        Event(evt) => {
+                            println!("evt")
+                        },
+                        Command(cmd) => {
+                            println!("cmd")
+                        },
+                        _ => {
+                            println!("unknown message")
+                        },
+                    }
+
+                    let out_msg = EventSourcedStreamOut {
+                        message: None,
+                    };
+                    yield out_msg;
+                }
             }
+            println!("stream is done!")
         };
 
         Ok(Response::new(Box::pin(output) as Self::handleStream))
