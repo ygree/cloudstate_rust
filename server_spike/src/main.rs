@@ -1,6 +1,7 @@
+#![recursion_limit="256"]
 
 use protocols::cloudstate::eventsourced::event_sourced_server::{EventSourced, EventSourcedServer};
-use protocols::cloudstate::eventsourced::{EventSourcedStreamIn, EventSourcedStreamOut};
+use protocols::cloudstate::eventsourced::{EventSourcedStreamIn, EventSourcedStreamOut, EventSourcedReply};
 use protocols::cloudstate::eventsourced::{event_sourced_stream_in, event_sourced_stream_out};
 use tonic::{Status, Streaming, Response, Request};
 use tonic::transport::Server;
@@ -33,7 +34,6 @@ impl EventSourced for EventSourcedServerImpl {
                     // none if protobuf version has unknown enum
 
                     use event_sourced_stream_in::Message::*;
-
                     match known_msg {
                         Init(init) => {
                             println!("init")
@@ -44,15 +44,23 @@ impl EventSourced for EventSourcedServerImpl {
                         Command(cmd) => {
                             println!("cmd")
                         },
-                        _ => {
-                            println!("unknown message")
-                        },
                     }
 
+                    use event_sourced_stream_out::Message::*;
+                    let reply = EventSourcedReply {
+                        command_id: 1i64, // Only for input input Command
+                        client_action: None, //TODO action
+                        side_effects: vec![], //TODO side effects
+                        events: vec![], //TODO events
+                        snapshot: None, //TODO snapshot
+                    };
                     let out_msg = EventSourcedStreamOut {
-                        message: None,
+                        message: Some(Reply(reply)),
                     };
                     yield out_msg;
+
+                } else {
+                    println!("unknown message")
                 }
             }
             println!("stream is done!")
