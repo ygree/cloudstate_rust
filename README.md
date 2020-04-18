@@ -3,6 +3,17 @@
 
 A Rust version of [Cloudstate](https://cloudstate.io/docs/index.html) client application.
 
+Run server:
+```
+cargo run --bin spike-server
+```
+
+Run client:
+```
+cargo run --bin spike-client
+```
+
+
 ### gRPC client
 
 #### Bloom RPC
@@ -39,9 +50,11 @@ A spike version of Cloudstate client application.
     [Bi-directional gRPC streaming with Tonic](https://github.com/hyperium/tonic/blob/master/examples/routeguide-tutorial.md)
     https://github.com/hyperium/tonic/blob/master/examples/src/authentication/server.rs#L56
     
-- [ ] Implement some EventSourced service interaction and find a way to test it
+- [x] Implement some EventSourced service interaction and find a way to test it
     [Bi-directional gRPC streaming with Tonic](https://github.com/hyperium/tonic/blob/master/examples/routeguide-tutorial.md#server-state)
     [Async steams](https://github.com/tokio-rs/async-stream)
+    
+- [ ] Implement test that runs the server and test it with a client
 
 - [ ] Bind EventSourced service to the ShopCart entity manually
 

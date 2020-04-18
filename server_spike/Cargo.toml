@@ -20,3 +20,10 @@ serde_json = "1.0"
 rand = "0.7"
 bytes = "0.5.4"
 
+[[bin]]
+name = "spike-server"
+path = "src/server.rs"
+
+[[bin]]
+name = "spike-client"
+path = "src/client.rs"
