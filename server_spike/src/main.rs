@@ -84,6 +84,7 @@ impl EventSourcedHandler for EventSourcedSession {
 
     fn handle_known_msg(&mut self, known_msg: event_sourced_stream_in::Message) -> Option<EventSourcedStreamOut> {
         use event_sourced_stream_in::Message;
+        use protocols::shoppingcart::persistence::*;
 
         match known_msg {
             Message::Init(init) => {
@@ -91,7 +92,18 @@ impl EventSourcedHandler for EventSourcedSession {
                 if let Some(snapshot) = init.snapshot {
                     println!("snapshot: seq_id = {}", snapshot.snapshot_sequence);
                     if let Some(snapshot_any) = snapshot.snapshot {
-                        //TODO: how to deserialize snapshot_any?
+                        let bytes = bytes::Bytes::from(snapshot_any.value);
+                        use ::prost::Message; // import Message trait to call decode
+                        let result = Cart::decode(bytes);
+                        match result {
+                            Ok(cart) => {
+                                println!("Decoded: {:?}", cart);
+                            },
+                            Err(err) => {
+                                eprintln!("Couldn't decode: {}", snapshot_any.type_url);
+                            },
+                        }
+
                     }
                 }
             },
