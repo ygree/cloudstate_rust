@@ -1,4 +1,3 @@
-#![recursion_limit="256"]
 
 use protocols::cloudstate::eventsourced::event_sourced_server::{EventSourced, EventSourcedServer};
 use protocols::cloudstate::eventsourced::{EventSourcedStreamIn, EventSourcedStreamOut, EventSourcedReply};
@@ -8,6 +7,19 @@ use tonic::transport::Server;
 use std::pin::Pin;
 // use futures_core::Stream; // TODO: it caused compile issues
 use futures::Stream;
+
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let addr = "[::1]:9000".parse().unwrap();
+    let server = EventSourcedServerImpl::default();
+
+    let svc = EventSourcedServer::new(server);
+
+    Server::builder().add_service(svc).serve(addr).await?;
+
+    Ok(())
+}
 
 #[derive(Default)]
 struct EventSourcedServerImpl;
@@ -33,32 +45,9 @@ impl EventSourced for EventSourcedServerImpl {
                 if let Some(known_msg) = in_msg.message {
                     // none if protobuf version has unknown enum
 
-                    use event_sourced_stream_in::Message::*;
-                    match known_msg {
-                        Init(init) => {
-                            println!("init")
-                        },
-                        Event(evt) => {
-                            println!("evt")
-                        },
-                        Command(cmd) => {
-                            println!("cmd")
-                        },
+                    if let Some(out_msg) = EventSourcedServerImpl::handle_known_msg(known_msg) {
+                        yield out_msg;
                     }
-
-                    use event_sourced_stream_out::Message::*;
-                    let reply = EventSourcedReply {
-                        command_id: 1i64, // Only for input input Command
-                        client_action: None, //TODO action
-                        side_effects: vec![], //TODO side effects
-                        events: vec![], //TODO events
-                        snapshot: None, //TODO snapshot
-                    };
-                    let out_msg = EventSourcedStreamOut {
-                        message: Some(Reply(reply)),
-                    };
-                    yield out_msg;
-
                 } else {
                     println!("unknown message")
                 }
@@ -71,15 +60,33 @@ impl EventSourced for EventSourcedServerImpl {
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:9000".parse().unwrap();
-    let server = EventSourcedServerImpl::default();
+impl EventSourcedServerImpl {
 
-    let svc = EventSourcedServer::new(server);
+    fn handle_known_msg(known_msg: event_sourced_stream_in::Message) -> Option<EventSourcedStreamOut> {
+        use event_sourced_stream_in::Message::*;
+        match known_msg {
+            Init(init) => {
+                println!("init")
+            },
+            Event(evt) => {
+                println!("evt")
+            },
+            Command(cmd) => {
+                println!("cmd")
+            },
+        }
 
-    Server::builder().add_service(svc).serve(addr).await?;
-
-    Ok(())
+        use event_sourced_stream_out::Message::*;
+        let reply = EventSourcedReply {
+            command_id: 1i64, // Only for input input Command
+            client_action: None, //TODO action
+            side_effects: vec![], //TODO side effects
+            events: vec![], //TODO events
+            snapshot: None, //TODO snapshot
+        };
+        let out_msg = EventSourcedStreamOut {
+            message: Some(Reply(reply)),
+        };
+        Some(out_msg)
+    }
 }
-
