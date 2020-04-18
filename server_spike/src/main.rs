@@ -77,7 +77,9 @@ impl EventSourcedHandler for EventSourcedSession {
     }
 
     fn session_finished(&mut self) {
-        println!("starting finished");
+        //TODO it's not called if the session is not closed properly on the client.
+        // It will lead to the resource leak. How to prevent it?
+        println!("session finished");
     }
 
     fn handle_known_msg(&mut self, known_msg: event_sourced_stream_in::Message) -> Option<EventSourcedStreamOut> {
@@ -85,7 +87,13 @@ impl EventSourcedHandler for EventSourcedSession {
 
         match known_msg {
             Message::Init(init) => {
-                println!("init")
+                println!("init service: {} entity_id: {}", init.service_name, init.entity_id);
+                if let Some(snapshot) = init.snapshot {
+                    println!("snapshot: seq_id = {}", snapshot.snapshot_sequence);
+                    if let Some(snapshot_any) = snapshot.snapshot {
+                        //TODO: how to deserialize snapshot_any?
+                    }
+                }
             },
             Message::Event(evt) => {
                 println!("evt")
