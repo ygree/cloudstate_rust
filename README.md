@@ -3,13 +3,16 @@
 
 A Rust version of [Cloudstate](https://cloudstate.io/docs/index.html) client application.
 
-Links:
-======
+### gRPC client
 
-gRPC clients:
--------------
+#### Bloom RPC
+
 https://github.com/uw-labs/bloomrpc
-https://github.com/fullstorydev/grpcui
+
+```
+
+```
+
 
 ### protocols
 
@@ -46,3 +49,4 @@ A spike version of Cloudstate client application.
 
 - [ ] Write documentation
 
+- [ ] Implement Gatling stress test

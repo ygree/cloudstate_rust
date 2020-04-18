@@ -40,19 +40,22 @@ impl EventSourced for EventSourcedServerImpl {
             // got from the examples but it doesn't work, perhaps in previous version of tonic before 0.2.0
             // TODO: maybe submit a PR?
 
+            let mut session = EventSourcedSession();
+            session.session_started();
+
             while let Some(in_msg) = stream.message().await? { // msg: EventSourcedStreamIn
 
                 if let Some(known_msg) = in_msg.message {
                     // none if protobuf version has unknown enum
 
-                    if let Some(out_msg) = EventSourcedServerImpl::handle_known_msg(known_msg) {
+                    if let Some(out_msg) = session.handle_known_msg(known_msg) {
                         yield out_msg;
                     }
                 } else {
                     println!("unknown message")
                 }
             }
-            println!("stream is done!")
+            session.session_finished();
         };
 
         Ok(Response::new(Box::pin(output) as Self::handleStream))
@@ -60,18 +63,34 @@ impl EventSourced for EventSourcedServerImpl {
     }
 }
 
-impl EventSourcedServerImpl {
+trait EventSourcedHandler {
+    fn session_started(&mut self);
+    fn session_finished(&mut self);
+    fn handle_known_msg(&mut self, known_msg: event_sourced_stream_in::Message) -> Option<EventSourcedStreamOut>;
+}
 
-    fn handle_known_msg(known_msg: event_sourced_stream_in::Message) -> Option<EventSourcedStreamOut> {
-        use event_sourced_stream_in::Message::*;
+struct EventSourcedSession();
+
+impl EventSourcedHandler for EventSourcedSession {
+    fn session_started(&mut self) {
+        println!("starting session");
+    }
+
+    fn session_finished(&mut self) {
+        println!("starting finished");
+    }
+
+    fn handle_known_msg(&mut self, known_msg: event_sourced_stream_in::Message) -> Option<EventSourcedStreamOut> {
+        use event_sourced_stream_in::Message;
+
         match known_msg {
-            Init(init) => {
+            Message::Init(init) => {
                 println!("init")
             },
-            Event(evt) => {
+            Message::Event(evt) => {
                 println!("evt")
             },
-            Command(cmd) => {
+            Message::Command(cmd) => {
                 println!("cmd")
             },
         }

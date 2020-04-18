@@ -22,6 +22,7 @@ package cloudstate.eventsourced;
 // the protocol.
 import "google/protobuf/any.proto";
 import "cloudstate/entity.proto";
+//import "entity.proto";
 
 option java_package = "io.cloudstate.protocol";
 option go_package = "cloudstate/protocol";
