@@ -93,7 +93,7 @@ impl EventSourcedHandler for EventSourcedSession {
                     println!("snapshot: seq_id = {}", snapshot.snapshot_sequence);
                     if let Some(snapshot_any) = snapshot.snapshot {
                         let bytes = bytes::Bytes::from(snapshot_any.value);
-                        use ::prost::Message; // import Message trait to call decode
+                        use ::prost::Message; // import Message trait to call decode on Cart
                         let result = Cart::decode(bytes);
                         match result {
                             Ok(cart) => {
@@ -103,7 +103,6 @@ impl EventSourcedHandler for EventSourcedSession {
                                 eprintln!("Couldn't decode: {}", snapshot_any.type_url);
                             },
                         }
-
                     }
                 }
             },
