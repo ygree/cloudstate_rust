@@ -73,15 +73,6 @@ trait Entity {
     fn snapshot(self: &Self) -> Self::Snapshot;
     fn restore(snapshot: Self::Snapshot) -> Self;
     fn empty() -> Self;
-
-    fn decode_snapshot(&self, snapshot_any: ::prost_types::Any) {
-        let bytes = bytes::Bytes::from(snapshot_any.value);
-        use ::prost::Message; // import Message trait to call decode on Cart
-
-        //TODO how to decode Any to any concrete Type
-        // let result = Snapshot::decode(bytes);
-
-    }
 }
 
 // entity state
