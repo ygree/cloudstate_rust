@@ -7,12 +7,17 @@ use tonic::transport::Server;
 use std::pin::Pin;
 // use futures_core::Stream; // TODO: it caused compile issues
 use futures::Stream;
+use bytes::Bytes;
 
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:9000".parse().unwrap();
-    let server = EventSourcedServerImpl::default();
+    let entity = ShoppingCartEntity;
+
+    //TODO how to construct a server that handles more than one type of entity?
+    // probably need some kind combinator type. See Server::builder for an example.
+    let server = EventSourcedServerImpl(entity);
 
     let svc = EventSourcedServer::new(server);
 
@@ -22,10 +27,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[derive(Default)]
-struct EventSourcedServerImpl;
+struct EventSourcedServerImpl<T: EventSourcedEntity>(T);
 
 #[tonic::async_trait]
-impl EventSourced for EventSourcedServerImpl {
+impl<T: EventSourcedEntity + Send + Sync + 'static + Clone> EventSourced for EventSourcedServerImpl<T> {
+    // These traits are required here because `EventSourced: Send + Sync + 'static`
+
     // it has generated a type with the first letter in lower case
     // TODO: consider fixing it
     type handleStream = Pin<Box<dyn Stream<Item = Result<EventSourcedStreamOut, Status>> + Send + Sync + 'static>>;
@@ -35,12 +42,14 @@ impl EventSourced for EventSourcedServerImpl {
     async fn handle(&self, request: Request<Streaming<EventSourcedStreamIn>>) -> Result<Response<Self::handleStream>, Status> {
         let mut stream = request.into_inner();
 
+        let entity = self.0.clone(); // clone entity to move into an async stream
+
         let output = async_stream::try_stream! {
             // while let Some(message) = stream.next().await {
             // got from the examples but it doesn't work, perhaps in previous version of tonic before 0.2.0
             // TODO: maybe submit a PR?
 
-            let mut session = EventSourcedSession();
+            let mut session = EventSourcedSession(entity);
             session.session_started();
 
             while let Some(in_msg) = stream.message().await? { // msg: EventSourcedStreamIn
@@ -63,15 +72,43 @@ impl EventSourced for EventSourcedServerImpl {
     }
 }
 
+trait EventSourcedEntity {
+    type Snapshot : ::prost::Message;
+    // fn decodeSnapshot(snapshot_any: ::prost_types::Any) -> Option<Snapshot> {
+    fn decode_snapshot(&self, bytes: bytes::Bytes) -> Result<Self::Snapshot, DecodeError>;
+    fn snapshot_loaded(&mut self, snapshot: Self::Snapshot);
+}
+
+#[derive(Clone)] // clone is needed to move the copy into the async stream
+struct ShoppingCartEntity;
+
+use protocols::shoppingcart::persistence::*;
+use prost::DecodeError;
+use std::sync::Arc;
+
+impl EventSourcedEntity for ShoppingCartEntity {
+
+    type Snapshot = Cart;
+
+    fn decode_snapshot(&self, bytes: Bytes) -> Result<Cart, DecodeError> {
+        use ::prost::Message; // import Message trait to call decode on Cart
+        Cart::decode(bytes)
+    }
+
+    fn snapshot_loaded(&mut self, snapshot: Self::Snapshot) {
+        println!("Snapshot Loaded: {:?}", snapshot);
+    }
+}
+
 trait EventSourcedHandler {
     fn session_started(&mut self);
     fn session_finished(&mut self);
     fn handle_known_msg(&mut self, known_msg: event_sourced_stream_in::Message) -> Option<EventSourcedStreamOut>;
 }
 
-struct EventSourcedSession();
+struct EventSourcedSession<T: EventSourcedEntity>(T);
 
-impl EventSourcedHandler for EventSourcedSession {
+impl<T: EventSourcedEntity> EventSourcedHandler for EventSourcedSession<T> {
     fn session_started(&mut self) {
         println!("starting session");
     }
@@ -88,17 +125,26 @@ impl EventSourcedHandler for EventSourcedSession {
 
         match known_msg {
             Message::Init(init) => {
+                //TODO lookup service implementation by service_name
                 println!("init service: {} entity_id: {}", init.service_name, init.entity_id);
                 if let Some(snapshot) = init.snapshot {
                     println!("snapshot: seq_id = {}", snapshot.snapshot_sequence);
                     if let Some(snapshot_any) = snapshot.snapshot {
+                        //TODO pass snapshot_any into the service implementation
                         let bytes = bytes::Bytes::from(snapshot_any.value);
-                        use ::prost::Message; // import Message trait to call decode on Cart
-                        let result = Cart::decode(bytes);
+                        let mut entity = &mut self.0;
+
+                        // use ::prost::Message; // import Message trait to call decode on Cart
+                        // let result = Cart::decode(bytes);
+
+
+                        let result = entity.decode_snapshot(bytes);
+
                         match result {
-                            Ok(cart) => {
-                                println!("Decoded: {:?}", cart);
-                            },
+                            Ok(snapshot) => {
+                                println!("Decoded: {:?}", &snapshot);
+                                entity.snapshot_loaded(snapshot);
+                            }
                             Err(err) => {
                                 eprintln!("Couldn't decode: {}", snapshot_any.type_url);
                             },

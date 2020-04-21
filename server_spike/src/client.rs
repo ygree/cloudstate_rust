@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let snapshot_any = ::prost_types::Any {
         //TODO is it even a correct type?
-        type_url: "com.example.shoppingcart.persistence/Cart".to_string(),
+        type_url: "com.example/shoppingcart.persistence.Cart".to_string(),
         value: buf,
     };
 
