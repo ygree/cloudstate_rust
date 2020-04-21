@@ -50,6 +50,7 @@ impl<T: EventSourcedEntity + Send + Sync + 'static + Clone> EventSourced for Eve
             // TODO: maybe submit a PR?
 
             let mut session = EventSourcedSession(entity);
+
             session.session_started();
 
             while let Some(in_msg) = stream.message().await? { // msg: EventSourcedStreamIn
@@ -64,7 +65,7 @@ impl<T: EventSourcedEntity + Send + Sync + 'static + Clone> EventSourced for Eve
                     println!("unknown message")
                 }
             }
-            session.session_finished();
+            session.session_finished(); // might not be called
         };
 
         Ok(Response::new(Box::pin(output) as Self::handleStream))
@@ -72,10 +73,17 @@ impl<T: EventSourcedEntity + Send + Sync + 'static + Clone> EventSourced for Eve
     }
 }
 
+//TODO extract it into a separate module
 trait EventSourcedEntity {
-    type Snapshot : ::prost::Message;
-    // fn decodeSnapshot(snapshot_any: ::prost_types::Any) -> Option<Snapshot> {
-    fn decode_snapshot(&self, bytes: bytes::Bytes) -> Result<Self::Snapshot, DecodeError>;
+
+    type Snapshot : ::prost::Message + Default;
+
+    fn decode_snapshot(&self, bytes: bytes::Bytes) -> Result<Self::Snapshot, DecodeError> {
+        // default implementation that can be overridden if needed
+        use ::prost::Message; // import Message trait to call decode on Cart
+        Self::Snapshot::decode(bytes)
+    }
+
     fn snapshot_loaded(&mut self, snapshot: Self::Snapshot);
 }
 
@@ -89,11 +97,6 @@ use std::sync::Arc;
 impl EventSourcedEntity for ShoppingCartEntity {
 
     type Snapshot = Cart;
-
-    fn decode_snapshot(&self, bytes: Bytes) -> Result<Cart, DecodeError> {
-        use ::prost::Message; // import Message trait to call decode on Cart
-        Cart::decode(bytes)
-    }
 
     fn snapshot_loaded(&mut self, snapshot: Self::Snapshot) {
         println!("Snapshot Loaded: {:?}", snapshot);
@@ -137,12 +140,11 @@ impl<T: EventSourcedEntity> EventSourcedHandler for EventSourcedSession<T> {
                         // use ::prost::Message; // import Message trait to call decode on Cart
                         // let result = Cart::decode(bytes);
 
-
                         let result = entity.decode_snapshot(bytes);
 
                         match result {
                             Ok(snapshot) => {
-                                println!("Decoded: {:?}", &snapshot);
+                                println!("Decoded: {:?}", snapshot);
                                 entity.snapshot_loaded(snapshot);
                             }
                             Err(err) => {
