@@ -13,7 +13,7 @@ use bytes::Bytes;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:9000".parse().unwrap();
-    let entity = ShoppingCartEntity;
+    let entity = ShoppingCartEntity::default();
 
     //TODO how to construct a server that handles more than one type of entity?
     // probably need some kind combinator type. See Server::builder for an example.
@@ -88,18 +88,28 @@ trait EventSourcedEntity {
 }
 
 #[derive(Clone)] // clone is needed to move the copy into the async stream
-struct ShoppingCartEntity;
+struct ShoppingCartEntity(Cart);
+
+impl Default for ShoppingCartEntity {
+    fn default() -> Self {
+        Self(
+            Cart {
+                items: vec![],
+            }
+        )
+    }
+}
 
 use protocols::shoppingcart::persistence::*;
 use prost::DecodeError;
-use std::sync::Arc;
 
 impl EventSourcedEntity for ShoppingCartEntity {
 
     type Snapshot = Cart;
 
     fn snapshot_loaded(&mut self, snapshot: Self::Snapshot) {
-        println!("Snapshot Loaded: {:?}", snapshot);
+        self.0 = snapshot;
+        println!("Snapshot Loaded: {:?}", self.0);
     }
 }
 
