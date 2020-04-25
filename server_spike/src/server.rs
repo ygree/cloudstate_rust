@@ -76,12 +76,14 @@ impl<T: EventSourcedEntity + Send + Sync + 'static + Clone> EventSourced for Eve
 //TODO extract it into a separate module
 trait EventSourcedEntity {
 
+    // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
     type Snapshot : ::prost::Message + Default;
 
     fn decode_snapshot(&self, bytes: bytes::Bytes) -> Result<Self::Snapshot, DecodeError> {
         // default implementation that can be overridden if needed
-        use ::prost::Message; // import Message trait to call decode on Cart
-        Self::Snapshot::decode(bytes)
+        use ::prost::Message; // import Message trait to call decode on Snapshot
+        // Self::Snapshot::decode(bytes)
+        <Self::Snapshot as Message>::decode(bytes) // explicity call a trait's associated method
     }
 
     fn snapshot_loaded(&mut self, snapshot: Self::Snapshot);
