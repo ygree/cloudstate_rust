@@ -115,15 +115,9 @@ impl EventSourcedEntity for ShoppingCartEntity {
     }
 }
 
-trait EventSourcedHandler {
-    fn session_started(&mut self);
-    fn session_finished(&mut self);
-    fn handle_known_msg(&mut self, known_msg: event_sourced_stream_in::Message) -> Option<EventSourcedStreamOut>;
-}
-
 struct EventSourcedSession<T: EventSourcedEntity>(T);
 
-impl<T: EventSourcedEntity> EventSourcedHandler for EventSourcedSession<T> {
+impl<T: EventSourcedEntity> EventSourcedSession<T> {
     fn session_started(&mut self) {
         println!("starting session");
     }
