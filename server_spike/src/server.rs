@@ -15,9 +15,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:9000".parse().unwrap();
     let entity = ShoppingCartEntity::default();
 
+    fn create_shopping_cart(service_name: &str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> {
+        Some(Box::new(ShoppingCartEntity::default()))
+    }
+
     //TODO how to construct a server that handles more than one type of entity?
     // probably need some kind combinator type. See Server::builder (below) for an example.
-    let factory = EntityFactory(entity);
+    // let factory = EntityFactory(entity);
+    let mut factory = EntityFactory(vec![]);
+    factory.add_entity("shopcart".to_owned(),
+        Box::new(
+            move || {
+                Box::new(ShoppingCartEntity::default())
+            }
+        )
+    );
 
     let server = EventSourcedServerImpl(Arc::new(factory));
 
@@ -28,13 +40,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-struct EntityFactory(ShoppingCartEntity);
+struct EntityFactory(Vec<Arc<dyn Fn(String) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> + Send + Sync>>);
 
 impl EntityFactory {
 
+    fn add_entity(&mut self, service_name: String, creator: Box<dyn Fn() -> Box<dyn EventSourcedEntityHandler + Send + Sync> + Send + Sync>) {
+        let service = service_name.to_owned();
+
+        let f: Box<dyn Fn(String) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> + Send + Sync> =
+            Box::new(move |name| {
+                if name == service {
+                    let f = &creator;
+                    Some(f())
+                } else {
+                    None
+                }
+            });
+
+        self.0.push(Arc::new(f));
+
+    }
+
     fn create(&self, service_name: &str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> {
-        //TODO create entity handler by the service name
-        Some(Box::new(self.0.clone()))
+        for creator in &self.0 {
+            if let Some(entity) = creator(service_name.to_owned()) {
+                return Some(entity);
+            }
+        }
+        return None;
     }
 }
 
