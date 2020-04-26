@@ -16,8 +16,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let entity = ShoppingCartEntity::default();
 
     //TODO how to construct a server that handles more than one type of entity?
-    // probably need some kind combinator type. See Server::builder for an example.
-    let server = EventSourcedServerImpl(entity);
+    // probably need some kind combinator type. See Server::builder (below) for an example.
+    let factory = EntityFactory(entity);
+
+    let server = EventSourcedServerImpl(Arc::new(factory));
 
     let svc = EventSourcedServer::new(server);
 
@@ -26,11 +28,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[derive(Default)]
-struct EventSourcedServerImpl<T: EventSourcedEntity>(T);
+struct EntityFactory(ShoppingCartEntity);
+
+impl EntityFactory {
+
+    fn create(&self, service_name: &str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> {
+        //TODO create entity handler by the service name
+        Some(Box::new(self.0.clone()))
+    }
+}
+
+struct EventSourcedServerImpl(Arc<EntityFactory>);
 
 #[tonic::async_trait]
-impl<T: EventSourcedEntity + Send + Sync + 'static + Clone> EventSourced for EventSourcedServerImpl<T> {
+impl EventSourced for EventSourcedServerImpl {
     // These traits are required here because `EventSourced: Send + Sync + 'static`
 
     // it has generated a type with the first letter in lower case
@@ -42,14 +53,14 @@ impl<T: EventSourcedEntity + Send + Sync + 'static + Clone> EventSourced for Eve
     async fn handle(&self, request: Request<Streaming<EventSourcedStreamIn>>) -> Result<Response<Self::handleStream>, Status> {
         let mut stream = request.into_inner();
 
-        let entity = self.0.clone(); // clone entity to move into an async stream
+        let factory = self.0.clone();
 
         let output = async_stream::try_stream! {
             // while let Some(message) = stream.next().await {
             // got from the examples but it doesn't work, perhaps in previous version of tonic before 0.2.0
             // TODO: maybe submit a PR?
 
-            let mut session = EventSourcedSession(entity);
+            let mut session = EventSourcedSession::new(factory);
 
             session.session_started();
 
@@ -73,8 +84,12 @@ impl<T: EventSourcedEntity + Send + Sync + 'static + Clone> EventSourced for Eve
     }
 }
 
+trait EventSourcedEntityHandler {
+    fn snapshot_loaded(&self, bytes: bytes::Bytes);
+}
+
 //TODO extract it into a separate module
-trait EventSourcedEntity {
+trait EventSourcedEntity: EventSourcedEntityHandler {
 
     // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
     type Snapshot : ::prost::Message + Default;
@@ -83,7 +98,7 @@ trait EventSourcedEntity {
         // default implementation that can be overridden if needed
         use ::prost::Message; // import Message trait to call decode on Snapshot
         // Self::Snapshot::decode(bytes)
-        <Self::Snapshot as Message>::decode(bytes) // explicity call a trait's associated method
+        <Self::Snapshot as Message>::decode(bytes) // explicitly call a trait's associated method
     }
 
     fn snapshot_loaded(&mut self, snapshot: Self::Snapshot);
@@ -104,6 +119,23 @@ impl Default for ShoppingCartEntity {
 
 use protocols::shoppingcart::persistence::*;
 use prost::DecodeError;
+use std::sync::Arc;
+
+impl EventSourcedEntityHandler for ShoppingCartEntity {
+
+    fn snapshot_loaded(&self, bytes: Bytes) {
+        use ::prost::Message; // import Message trait to call decode on Snapshot
+        match <Cart as Message>::decode(bytes) {
+            Ok(snapshot) => {
+                println!("Decoded: {:?}", snapshot);
+            }
+            Err(err) => {
+                eprintln!("Couldn't decode snapshot!");
+            },
+        }
+
+    }
+}
 
 impl EventSourcedEntity for ShoppingCartEntity {
 
@@ -115,9 +147,16 @@ impl EventSourcedEntity for ShoppingCartEntity {
     }
 }
 
-struct EventSourcedSession<T: EventSourcedEntity>(T);
+enum EventSourcedSession {
+    New(Arc<EntityFactory>),
+    Initialized(Box<dyn EventSourcedEntityHandler + Send + Sync>),
+}
 
-impl<T: EventSourcedEntity> EventSourcedSession<T> {
+impl EventSourcedSession {
+    fn new(factory: Arc<EntityFactory>) -> EventSourcedSession {
+        EventSourcedSession::New(factory)
+    }
+
     fn session_started(&mut self) {
         println!("starting session");
     }
@@ -139,24 +178,27 @@ impl<T: EventSourcedEntity> EventSourcedSession<T> {
                 if let Some(snapshot) = init.snapshot {
                     println!("snapshot: seq_id = {}", snapshot.snapshot_sequence);
                     if let Some(snapshot_any) = snapshot.snapshot {
-                        //TODO pass snapshot_any into the service implementation
+
+                        let service_name = init.service_name;
+
                         let bytes = bytes::Bytes::from(snapshot_any.value);
-                        let mut entity = &mut self.0;
 
-                        // use ::prost::Message; // import Message trait to call decode on Cart
-                        // let result = Cart::decode(bytes);
-
-                        let result = entity.decode_snapshot(bytes);
-
-                        match result {
-                            Ok(snapshot) => {
-                                println!("Decoded: {:?}", snapshot);
-                                entity.snapshot_loaded(snapshot);
-                            }
-                            Err(err) => {
-                                eprintln!("Couldn't decode: {}", snapshot_any.type_url);
+                        match &self {
+                            EventSourcedSession::New(factory) => {
+                                match factory.create(&service_name) {
+                                    Some(entity) => {
+                                        entity.snapshot_loaded(bytes);
+                                        *self = EventSourcedSession::Initialized(entity);
+                                    },
+                                    None => {
+                                        println!("Unknown service_name {}", service_name);
+                                    },
+                                }
                             },
-                        }
+                            EventSourcedSession::Initialized(entity) => {
+                                println!("Entity already initialized!");
+                            },
+                        };
                     }
                 }
             },
@@ -170,7 +212,7 @@ impl<T: EventSourcedEntity> EventSourcedSession<T> {
 
         use event_sourced_stream_out::Message::*;
         let reply = EventSourcedReply {
-            command_id: 1i64, // Only for input input Command
+            command_id: 1i64, // Only for input Command
             client_action: None, //TODO action
             side_effects: vec![], //TODO side effects
             events: vec![], //TODO events
