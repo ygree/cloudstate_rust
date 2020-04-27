@@ -14,13 +14,11 @@ use bytes::Bytes;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:9000".parse().unwrap();
 
-    //TODO how to construct a server that handles more than one type of entity?
-    // probably need some kind combinator type. See Server::builder (below) for an example.
-    let mut factory = EntityFactory(vec![]);
-    factory.add_entity("shopcart", ShoppingCartEntity::default);
-    factory.add_entity("shopcart2", ShoppingCartEntity::default);
+    let mut registry = EntityRegistry(vec![]);
+    registry.add_entity("shopcart", ShoppingCartEntity::default);
+    registry.add_entity("shopcart2", ShoppingCartEntity::default);
 
-    let server = EventSourcedServerImpl(Arc::new(factory));
+    let server = EventSourcedServerImpl(Arc::new(registry));
 
     let svc = EventSourcedServer::new(server);
 
@@ -33,9 +31,9 @@ pub type MaybeEntityHandler = Option<Box<dyn EventSourcedEntityHandler + Send + 
 
 type EntityHandlerFactory = Box<dyn Fn(&str) -> MaybeEntityHandler + Send + Sync>;
 
-struct EntityFactory(Vec<EntityHandlerFactory>);
+struct EntityRegistry(Vec<EntityHandlerFactory>);
 
-impl EntityFactory {
+impl EntityRegistry {
 
     pub fn add_entity<T, F>(&mut self, service_name: &str, creator: F)
         where T: EventSourcedEntityHandler + Send + Sync + 'static,
@@ -65,7 +63,7 @@ impl EntityFactory {
     }
 }
 
-struct EventSourcedServerImpl(Arc<EntityFactory>);
+struct EventSourcedServerImpl(Arc<EntityRegistry>);
 
 #[tonic::async_trait]
 impl EventSourced for EventSourcedServerImpl {
@@ -80,14 +78,14 @@ impl EventSourced for EventSourcedServerImpl {
     async fn handle(&self, request: Request<Streaming<EventSourcedStreamIn>>) -> Result<Response<Self::handleStream>, Status> {
         let mut stream = request.into_inner();
 
-        let factory = self.0.clone();
+        let registry = self.0.clone();
 
         let output = async_stream::try_stream! {
             // while let Some(message) = stream.next().await {
             // got from the examples but it doesn't work, perhaps in previous version of tonic before 0.2.0
             // TODO: maybe submit a PR?
 
-            let mut session = EventSourcedSession::new(factory);
+            let mut session = EventSourcedSession::new(registry);
 
             session.session_started();
 
@@ -123,13 +121,6 @@ trait EventSourcedEntity {
     // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
     type Snapshot : ::prost::Message + Default;
 
-    fn decode_snapshot(&self, bytes: Bytes) -> Result<Self::Snapshot, DecodeError> {
-        // default implementation that can be overridden if needed
-        use ::prost::Message; // import Message trait to call decode on Snapshot
-        // Self::Snapshot::decode(bytes)
-        <Self::Snapshot as Message>::decode(bytes) // explicitly call a trait's associated method
-    }
-
     fn snapshot_loaded(&mut self, snapshot: Self::Snapshot);
 
     // This method is called by server and need to bind to the entity typed and delegate call to the user implementation
@@ -144,6 +135,13 @@ trait EventSourcedEntity {
                 eprintln!("Couldn't decode snapshot!");
             },
         }
+    }
+
+    fn decode_snapshot(&self, bytes: Bytes) -> Result<Self::Snapshot, DecodeError> {
+        // default implementation that can be overridden if needed
+        use ::prost::Message; // import Message trait to call decode on Snapshot
+        // Self::Snapshot::decode(bytes)
+        <Self::Snapshot as Message>::decode(bytes) // explicitly call a trait's associated method
     }
 }
 
@@ -183,14 +181,14 @@ impl EventSourcedEntity for ShoppingCartEntity {
 }
 
 enum EventSourcedSession {
-    New(Arc<EntityFactory>),
+    New(Arc<EntityRegistry>),
     Initialized(Box<dyn EventSourcedEntityHandler + Send + Sync>),
 }
 
 impl EventSourcedSession {
 
-    fn new(factory: Arc<EntityFactory>) -> EventSourcedSession {
-        EventSourcedSession::New(factory)
+    fn new(registry: Arc<EntityRegistry>) -> EventSourcedSession {
+        EventSourcedSession::New(registry)
     }
 
     fn session_started(&mut self) {
@@ -221,8 +219,8 @@ impl EventSourcedSession {
                         let bytes = Bytes::from(snapshot_any.value);
 
                         match &self {
-                            EventSourcedSession::New(factory) => {
-                                match factory.create(&service_name) {
+                            EventSourcedSession::New(entity_registry) => {
+                                match entity_registry.create(&service_name) {
                                     Some(mut entity) => {
                                         entity.snapshot_received(type_url, bytes);
                                         *self = EventSourcedSession::Initialized(entity);
@@ -231,7 +229,7 @@ impl EventSourcedSession {
                                         println!("Unknown service_name {}", service_name);
                                     },
                                 }
-                            },
+                            }
                             EventSourcedSession::Initialized(entity) => {
                                 println!("Entity already initialized!");
                             },
