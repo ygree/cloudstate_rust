@@ -13,11 +13,6 @@ use bytes::Bytes;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:9000".parse().unwrap();
-    let entity = ShoppingCartEntity::default();
-
-    fn create_shopping_cart(service_name: &str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> {
-        Some(Box::new(ShoppingCartEntity::default()))
-    }
 
     //TODO how to construct a server that handles more than one type of entity?
     // probably need some kind combinator type. See Server::builder (below) for an example.
@@ -40,16 +35,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-struct EntityFactory(Vec<Arc<dyn Fn(String) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> + Send + Sync>>);
+struct EntityFactory(Vec<Arc<dyn Fn(&str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> + Send + Sync>>);
 
 impl EntityFactory {
 
     fn add_entity(&mut self, service_name: String, creator: Box<dyn Fn() -> Box<dyn EventSourcedEntityHandler + Send + Sync> + Send + Sync>) {
-        let service = service_name.to_owned();
 
-        let f: Box<dyn Fn(String) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> + Send + Sync> =
+        let f: Box<dyn Fn(&str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> + Send + Sync> =
             Box::new(move |name| {
-                if name == service {
+                if name == service_name {
                     let f = &creator;
                     Some(f())
                 } else {
@@ -58,12 +52,11 @@ impl EntityFactory {
             });
 
         self.0.push(Arc::new(f));
-
     }
 
     fn create(&self, service_name: &str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> {
         for creator in &self.0 {
-            if let Some(entity) = creator(service_name.to_owned()) {
+            if let Some(entity) = creator(service_name) {
                 return Some(entity);
             }
         }
