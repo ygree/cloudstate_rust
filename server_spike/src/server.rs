@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-struct EntityFactory(Vec<Arc<dyn Fn(&str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> + Send + Sync>>);
+struct EntityFactory(Vec<Box<dyn Fn(&str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> + Send + Sync>>);
 
 impl EntityFactory {
 
@@ -48,7 +48,7 @@ impl EntityFactory {
                 }
             });
 
-        self.0.push(Arc::new(create_entity_function));
+        self.0.push(Box::new(create_entity_function));
     }
 
     fn create(&self, service_name: &str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> {
