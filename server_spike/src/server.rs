@@ -111,17 +111,19 @@ impl EventSourced for EventSourcedServerImpl {
     }
 }
 
+// this is untyped entity handler interface for the server implementation
 trait EventSourcedEntityHandler {
-    fn snapshot_loaded_handler(&mut self, bytes: bytes::Bytes);
+    fn snapshot_received(&mut self, type_url: String, bytes: Bytes);
 }
 
-//TODO bridge from this user friendly trait to the EventSourcedEntityHandler that is server specific and not type aware
+// this is typed entity handler interface to be implemented by user
+// NOTE: it can't be used by the server side because it has associated type
 trait EventSourcedEntity {
 
     // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
     type Snapshot : ::prost::Message + Default;
 
-    fn decode_snapshot(&self, bytes: bytes::Bytes) -> Result<Self::Snapshot, DecodeError> {
+    fn decode_snapshot(&self, bytes: Bytes) -> Result<Self::Snapshot, DecodeError> {
         // default implementation that can be overridden if needed
         use ::prost::Message; // import Message trait to call decode on Snapshot
         // Self::Snapshot::decode(bytes)
@@ -131,7 +133,7 @@ trait EventSourcedEntity {
     fn snapshot_loaded(&mut self, snapshot: Self::Snapshot);
 
     // This method is called by server and need to bind to the entity typed and delegate call to the user implementation
-    fn snapshot_loaded_handler2(&mut self, bytes: bytes::Bytes) {
+    fn snapshot_received(&mut self, type_url: String, bytes: Bytes) {
         use ::prost::Message; // import Message trait to call decode on Snapshot
         match self.decode_snapshot(bytes) {
             Ok(snapshot) => {
@@ -145,11 +147,12 @@ trait EventSourcedEntity {
     }
 }
 
+// This provides automatic implementation of EventSourcedEntityHandler for the server from the user's EventSourcedEntity implementation
 impl<T> EventSourcedEntityHandler for T
     where T: EventSourcedEntity {
 
-    fn snapshot_loaded_handler(&mut self, bytes: Bytes) {
-        self.snapshot_loaded_handler2(bytes)
+    fn snapshot_received(&mut self, type_url: String, bytes: Bytes) {
+        self.snapshot_received(type_url, bytes)
     }
 }
 
@@ -214,13 +217,14 @@ impl EventSourcedSession {
 
                         let service_name = init.service_name;
 
-                        let bytes = bytes::Bytes::from(snapshot_any.value);
+                        let type_url = snapshot_any.type_url;
+                        let bytes = Bytes::from(snapshot_any.value);
 
                         match &self {
                             EventSourcedSession::New(factory) => {
                                 match factory.create(&service_name) {
                                     Some(mut entity) => {
-                                        entity.snapshot_loaded_handler(bytes);
+                                        entity.snapshot_received(type_url, bytes);
                                         *self = EventSourcedSession::Initialized(entity);
                                     },
                                     None => {
