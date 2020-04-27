@@ -18,13 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // probably need some kind combinator type. See Server::builder (below) for an example.
     // let factory = EntityFactory(entity);
     let mut factory = EntityFactory(vec![]);
-    factory.add_entity("shopcart".to_owned(),
-        Box::new(
-            move || {
-                Box::new(ShoppingCartEntity::default())
-            }
-        )
-    );
+    factory.add_entity("shopcart".to_owned(), ShoppingCartEntity::default);
 
     let server = EventSourcedServerImpl(Arc::new(factory));
 
@@ -39,13 +33,15 @@ struct EntityFactory(Vec<Arc<dyn Fn(&str) -> Option<Box<dyn EventSourcedEntityHa
 
 impl EntityFactory {
 
-    fn add_entity(&mut self, service_name: String, creator: Box<dyn Fn() -> Box<dyn EventSourcedEntityHandler + Send + Sync> + Send + Sync>) {
-
+    fn add_entity<T, F>(&mut self, service_name: String, creator: F)
+        where T: EventSourcedEntityHandler + Send + Sync + 'static,
+              F: Fn () -> T + Send + Sync + 'static
+    {
         let f: Box<dyn Fn(&str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> + Send + Sync> =
             Box::new(move |name| {
                 if name == service_name {
                     let f = &creator;
-                    Some(f())
+                    Some(Box::new(f()))
                 } else {
                     None
                 }
