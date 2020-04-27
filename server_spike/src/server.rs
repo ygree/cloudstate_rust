@@ -112,6 +112,7 @@ impl EventSourced for EventSourcedServerImpl {
 // this is untyped entity handler interface for the server implementation
 trait EventSourcedEntityHandler {
     fn snapshot_received(&mut self, type_url: String, bytes: Bytes);
+    fn command_received(&self, type_url: String, bytes: Bytes);
 }
 
 // this is typed entity handler interface to be implemented by user
@@ -143,6 +144,34 @@ trait EventSourcedEntity {
         // Self::Snapshot::decode(bytes)
         <Self::Snapshot as Message>::decode(bytes) // explicitly call a trait's associated method
     }
+
+    //TODO there is a separate proto message for each type of command.
+    type Command : ::prost::Message + Default;
+
+    fn command_received(&self, type_url: String, bytes: Bytes) {
+        use ::prost::Message; // import Message trait to call decode on Command
+        match self.decode_command(bytes) {
+            Ok(command) => {
+                println!("Decoded: {:?}", command);
+                // self.snapshot_loaded(snapshot);
+            }
+            Err(err) => {
+                eprintln!("Couldn't decode snapshot!");
+            },
+        }
+
+
+        //TODO pass a command to the command handler and expect an effect back
+        //TODO call an event handler for new events
+        //TODO return an effect to be sent to Akka
+    }
+
+    fn decode_command(&self, bytes: Bytes) -> Result<Self::Command, DecodeError> {
+        // default implementation that can be overridden if needed
+        use ::prost::Message; // import Message trait to call decode on Command
+        // Self::Command::decode(bytes)
+        <Self::Command as Message>::decode(bytes) // explicitly call a trait's associated method
+    }
 }
 
 // This provides automatic implementation of EventSourcedEntityHandler for the server from the user's EventSourcedEntity implementation
@@ -151,6 +180,10 @@ impl<T> EventSourcedEntityHandler for T
 
     fn snapshot_received(&mut self, type_url: String, bytes: Bytes) {
         self.snapshot_received(type_url, bytes)
+    }
+
+    fn command_received(&self, type_url: String, bytes: Bytes) {
+        self.command_received(type_url, bytes)
     }
 }
 
@@ -173,6 +206,7 @@ use std::sync::Arc;
 impl EventSourcedEntity for ShoppingCartEntity {
 
     type Snapshot = Cart;
+    type Command = Cart; //TODO: need command types. There is now one command type but a separate one for each command
 
     fn snapshot_loaded(&mut self, snapshot: Self::Snapshot) {
         self.0 = snapshot;
@@ -241,6 +275,27 @@ impl EventSourcedSession {
                 println!("evt")
             },
             Message::Command(cmd) => {
+                match &self {
+                    EventSourcedSession::Initialized(entity) => {
+                        println!("Handling a command!");
+                        match cmd.payload {
+                            Some(payload_any) => {
+                                let type_url = payload_any.type_url;
+                                let bytes = Bytes::from(payload_any.value);
+
+                                entity.command_received(type_url, bytes);
+                            },
+                            None => {
+                                println!("Command without payload!");
+                            },
+                        }
+
+                    },
+                    _ => {
+                        println!("Can't handle a command until the entity is initialized!");
+                    },
+                };
+
                 println!("cmd")
             },
         }
