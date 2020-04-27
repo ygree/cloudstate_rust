@@ -16,7 +16,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     //TODO how to construct a server that handles more than one type of entity?
     // probably need some kind combinator type. See Server::builder (below) for an example.
-    // let factory = EntityFactory(entity);
     let mut factory = EntityFactory(vec![]);
     factory.add_entity("shopcart", ShoppingCartEntity::default);
     factory.add_entity("shopcart2", ShoppingCartEntity::default);
@@ -113,11 +112,11 @@ impl EventSourced for EventSourcedServerImpl {
 }
 
 trait EventSourcedEntityHandler {
-    fn snapshot_loaded(&self, bytes: bytes::Bytes);
+    fn snapshot_loaded_handler(&mut self, bytes: bytes::Bytes);
 }
 
-//TODO extract it into a separate module
-trait EventSourcedEntity: EventSourcedEntityHandler {
+//TODO bridge from this user friendly trait to the EventSourcedEntityHandler that is server specific and not type aware
+trait EventSourcedEntity {
 
     // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
     type Snapshot : ::prost::Message + Default;
@@ -130,9 +129,30 @@ trait EventSourcedEntity: EventSourcedEntityHandler {
     }
 
     fn snapshot_loaded(&mut self, snapshot: Self::Snapshot);
+
+    // This method is called by server and need to bind to the entity typed and delegate call to the user implementation
+    fn snapshot_loaded_handler2(&mut self, bytes: bytes::Bytes) {
+        use ::prost::Message; // import Message trait to call decode on Snapshot
+        match self.decode_snapshot(bytes) {
+            Ok(snapshot) => {
+                println!("Decoded: {:?}", snapshot);
+                self.snapshot_loaded(snapshot);
+            }
+            Err(err) => {
+                eprintln!("Couldn't decode snapshot!");
+            },
+        }
+    }
 }
 
-#[derive(Clone)] // clone is needed to move the copy into the async stream
+impl<T> EventSourcedEntityHandler for T
+    where T: EventSourcedEntity {
+
+    fn snapshot_loaded_handler(&mut self, bytes: Bytes) {
+        self.snapshot_loaded_handler2(bytes)
+    }
+}
+
 struct ShoppingCartEntity(Cart);
 
 impl Default for ShoppingCartEntity {
@@ -148,22 +168,6 @@ impl Default for ShoppingCartEntity {
 use protocols::shoppingcart::persistence::*;
 use prost::DecodeError;
 use std::sync::Arc;
-
-impl EventSourcedEntityHandler for ShoppingCartEntity {
-
-    fn snapshot_loaded(&self, bytes: Bytes) {
-        use ::prost::Message; // import Message trait to call decode on Snapshot
-        match <Cart as Message>::decode(bytes) {
-            Ok(snapshot) => {
-                println!("Decoded: {:?}", snapshot);
-            }
-            Err(err) => {
-                eprintln!("Couldn't decode snapshot!");
-            },
-        }
-
-    }
-}
 
 impl EventSourcedEntity for ShoppingCartEntity {
 
@@ -181,6 +185,7 @@ enum EventSourcedSession {
 }
 
 impl EventSourcedSession {
+
     fn new(factory: Arc<EntityFactory>) -> EventSourcedSession {
         EventSourcedSession::New(factory)
     }
@@ -214,8 +219,8 @@ impl EventSourcedSession {
                         match &self {
                             EventSourcedSession::New(factory) => {
                                 match factory.create(&service_name) {
-                                    Some(entity) => {
-                                        entity.snapshot_loaded(bytes);
+                                    Some(mut entity) => {
+                                        entity.snapshot_loaded_handler(bytes);
                                         *self = EventSourcedSession::Initialized(entity);
                                     },
                                     None => {
