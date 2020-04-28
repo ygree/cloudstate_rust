@@ -19,8 +19,9 @@ fn main() {
     // TODO: doesn't seem to be possible to generate frontend separately
     // NOTE: it's not an issue because we don't need anything from the frontend module yet.
     tonic_build::configure()
-        .build_server(true)
-        .build_client(true)
+        // Skip server / client generation for the example because it's implemented by Cloudstate sidecar.
+        .build_server(false)
+        .build_client(false)
         .out_dir("src/example/shoppingcart")
         .compile(&[
             "example/shoppingcart/persistence/domain.proto",
