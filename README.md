@@ -36,8 +36,8 @@ Contains [original protobuf files](https://github.com/cloudstateio/cloudstate/tr
 Entity implementation.
 
 - [x] Implement end user entity code to see how it may look like.
-- [ ] Add shopping_cart proto files to the project and generate Rust files.
-    - [ ] Generate proto classes out to the crates to navigate to in the IDE.    
+- [x] Add shopping_cart proto files to the project and generate Rust files.
+    - [x] Generate proto classes out to the crates to navigate to in the IDE.    
 - [ ] There is a separate proto message for each type of command. How to handle it nicely?
 
 

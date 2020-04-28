@@ -1,13 +1,15 @@
 
-use protocols::cloudstate::eventsourced::event_sourced_client::{EventSourcedClient};
-use protocols::cloudstate::eventsourced::{EventSourcedInit, EventSourcedStreamIn, EventSourcedSnapshot};
-use protocols::cloudstate::eventsourced::{event_sourced_stream_in};
+use protocols::protocol::cloudstate::eventsourced::{
+    EventSourcedInit, EventSourcedStreamIn, EventSourcedSnapshot,
+    event_sourced_stream_in,
+    event_sourced_client::{EventSourcedClient}
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client = EventSourcedClient::connect("http://[::1]:9000").await?;
 
-    use protocols::shoppingcart::persistence::*;
+    use protocols::example::shoppingcart::persistence::*;
 
     let item1 = LineItem {
         product_id: "soap33".to_string(),

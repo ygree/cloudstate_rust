@@ -1,12 +1,17 @@
-pub mod cloudstate {
-    tonic::include_proto!("cloudstate");
-    pub mod eventsourced {
-        tonic::include_proto!("cloudstate.eventsourced");
+pub mod protocol {
+    pub mod cloudstate {
+        include!("protocol/cloudstate.rs");
+        pub mod eventsourced {
+            include!("protocol/cloudstate.eventsourced.rs");
+        }
     }
 }
 
-pub mod shoppingcart {
-    pub mod persistence {
-        tonic::include_proto!("com.example.shoppingcart.persistence");
+pub mod example {
+    pub mod shoppingcart {
+        include!("example/shoppingcart/com.example.shoppingcart.rs");
+        pub mod persistence {
+            include!("example/shoppingcart/com.example.shoppingcart.persistence.rs");
+        }
     }
 }

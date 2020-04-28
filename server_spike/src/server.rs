@@ -1,7 +1,9 @@
 
-use protocols::cloudstate::eventsourced::event_sourced_server::{EventSourced, EventSourcedServer};
-use protocols::cloudstate::eventsourced::{EventSourcedStreamIn, EventSourcedStreamOut, EventSourcedReply};
-use protocols::cloudstate::eventsourced::{event_sourced_stream_in, event_sourced_stream_out};
+use protocols::protocol::cloudstate::eventsourced::{
+    EventSourcedStreamIn, EventSourcedStreamOut, EventSourcedReply,
+    event_sourced_stream_in, event_sourced_stream_out,
+    event_sourced_server::{EventSourced, EventSourcedServer}
+};
 use tonic::{Status, Streaming, Response, Request};
 use tonic::transport::Server;
 use std::pin::Pin;
@@ -199,7 +201,7 @@ impl Default for ShoppingCartEntity {
     }
 }
 
-use protocols::shoppingcart::persistence::*;
+use protocols::example::shoppingcart::persistence::*;
 use prost::DecodeError;
 use std::sync::Arc;
 
@@ -237,7 +239,7 @@ impl EventSourcedSession {
 
     fn handle_known_msg(&mut self, known_msg: event_sourced_stream_in::Message) -> Option<EventSourcedStreamOut> {
         use event_sourced_stream_in::Message;
-        use protocols::shoppingcart::persistence::*;
+        use protocols::example::shoppingcart::persistence::*;
 
         match known_msg {
             Message::Init(init) => {
