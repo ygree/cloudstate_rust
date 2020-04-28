@@ -17,8 +17,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:9000".parse().unwrap();
 
     let mut registry = EntityRegistry(vec![]);
+    //TODO: Is there a way to pass a type that provides the Default trait instead of passing a function?
     registry.add_entity("shopcart", ShoppingCartEntity::default);
     registry.add_entity("shopcart2", ShoppingCartEntity::default);
+    registry.add_entity_type("shopcart3", PhantomData::<ShoppingCartEntity>);
 
     let server = EventSourcedServerImpl(Arc::new(registry));
 
@@ -36,6 +38,12 @@ type EntityHandlerFactory = Box<dyn Fn(&str) -> MaybeEntityHandler + Send + Sync
 struct EntityRegistry(Vec<EntityHandlerFactory>);
 
 impl EntityRegistry {
+
+    pub fn add_entity_type<T>(&mut self, service_name: &str, entity: PhantomData<T>)
+        where T: EventSourcedEntityHandler + Default + Send + Sync + 'static
+    {
+        self.add_entity(service_name, || <T as Default>::default());
+    }
 
     pub fn add_entity<T, F>(&mut self, service_name: &str, creator: F)
         where T: EventSourcedEntityHandler + Send + Sync + 'static,
@@ -204,6 +212,7 @@ impl Default for ShoppingCartEntity {
 use protocols::example::shoppingcart::persistence::*;
 use prost::DecodeError;
 use std::sync::Arc;
+use std::marker::PhantomData;
 
 impl EventSourcedEntity for ShoppingCartEntity {
 
