@@ -131,6 +131,7 @@ trait EventSourcedEntity {
 
     // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
     type Snapshot : ::prost::Message + Default;
+    type Command : CommandDecoder;
 
     fn snapshot_loaded(&mut self, snapshot: Self::Snapshot);
 
@@ -155,33 +156,15 @@ trait EventSourcedEntity {
         <Self::Snapshot as Message>::decode(bytes) // explicitly call a trait's associated method
     }
 
-    //TODO there is a separate proto message for each type of command.
-    type Command : ::prost::Message + Default;
-
     fn command_received(&self, type_url: String, bytes: Bytes) {
-        use ::prost::Message; // import Message trait to call decode on Command
-        match self.decode_command(bytes) {
-            Ok(command) => {
-                println!("Decoded: {:?}", command);
-                // self.snapshot_loaded(snapshot);
-            }
-            Err(err) => {
-                eprintln!("Couldn't decode snapshot!");
-            },
+        if let Some(cmd) = <Self::Command as CommandDecoder>::decode(type_url, bytes) {
+            self.handle_command(cmd)
+            //TODO call an event handler for new events
+            //TODO return an effect to be sent to Akka
         }
-
-
-        //TODO pass a command to the command handler and expect an effect back
-        //TODO call an event handler for new events
-        //TODO return an effect to be sent to Akka
     }
 
-    fn decode_command(&self, bytes: Bytes) -> Result<Self::Command, DecodeError> {
-        // default implementation that can be overridden if needed
-        use ::prost::Message; // import Message trait to call decode on Command
-        // Self::Command::decode(bytes)
-        <Self::Command as Message>::decode(bytes) // explicitly call a trait's associated method
-    }
+    fn handle_command(&self, command: Self::Command);
 }
 
 // This provides automatic implementation of EventSourcedEntityHandler for the server from the user's EventSourcedEntity implementation
@@ -210,18 +193,68 @@ impl Default for ShoppingCartEntity {
 }
 
 use protocols::example::shoppingcart::persistence::*;
-use prost::DecodeError;
+use prost::{DecodeError, Message};
 use std::sync::Arc;
 use std::marker::PhantomData;
+use protocols::example::shoppingcart::{ AddLineItem, RemoveLineItem, GetShoppingCart };
+
+// Combine command into one type.
+//TODO #[derive(CommandDecoder)]
+enum ShoppingCartCommand {
+    AddLineItem(AddLineItem),
+    RemoveLineItem(RemoveLineItem),
+    GetShoppingCart(GetShoppingCart),
+}
+
+trait CommandDecoder : Sized {
+    fn decode(type_url: String, bytes: Bytes) -> Option<Self>;
+}
+
+//TODO should be derivable from ShoppingCartCommand
+impl CommandDecoder for ShoppingCartCommand {
+
+    fn decode(type_url: String, bytes: Bytes) -> Option<Self> {
+        match type_url.as_ref() {
+            "AddLineItem" => {
+                match <AddLineItem as Message>::decode(bytes) {
+                    Ok(command) => {
+                        println!("Received {:?}", command);
+                        Some(ShoppingCartCommand::AddLineItem(command))
+                    },
+                    Err(err) => {
+                        eprintln!("Error decoding AddLineItem command: {}", err);
+                        None
+                    },
+                }
+            },
+            "RemoveLineItem" => {
+                //TBD
+                None
+            },
+            "GetShoppingCart" => {
+                //TBD
+                None
+            },
+            unknown_command_type => {
+                eprintln!("Unknown command type: {}", unknown_command_type);
+                None
+            },
+        }
+    }
+}
 
 impl EventSourcedEntity for ShoppingCartEntity {
 
     type Snapshot = Cart;
-    type Command = Cart; //TODO: need command types. There is now one command type but a separate one for each command
+    type Command = ShoppingCartCommand;
 
     fn snapshot_loaded(&mut self, snapshot: Self::Snapshot) {
         self.0 = snapshot;
         println!("Snapshot Loaded: {:?}", self.0);
+    }
+
+    fn handle_command(&self, _command: Self::Command) {
+        unimplemented!()
     }
 }
 
