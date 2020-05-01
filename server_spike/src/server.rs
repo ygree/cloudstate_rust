@@ -253,8 +253,19 @@ impl EventSourcedEntity for ShoppingCartEntity {
         println!("Snapshot Loaded: {:?}", self.0);
     }
 
-    fn handle_command(&self, _command: Self::Command) {
-        unimplemented!()
+    fn handle_command(&self, command: Self::Command) {
+        match command {
+            ShoppingCartCommand::AddLineItem(add_line_item) => {
+                println!("Handle command: {:?}", add_line_item);
+            },
+            ShoppingCartCommand::RemoveLineItem(remove_line_item) => {
+                println!("Handle command: {:?}", remove_line_item);
+            },
+            ShoppingCartCommand::GetShoppingCart(get_shopping_cart) => {
+                println!("Handle command: {:?}", get_shopping_cart);
+            },
+        }
+
     }
 }
 
