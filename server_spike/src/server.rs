@@ -198,8 +198,11 @@ use std::sync::Arc;
 use std::marker::PhantomData;
 use protocols::example::shoppingcart::{ AddLineItem, RemoveLineItem, GetShoppingCart };
 
+use ::command_macro_derive::CommandDecoder;
+
+//TODO consider using Attribute-like macros, e.g. #[commands(AddLineItem, RemoveLineItem, GetShoppingCart)]
 // Combine command into one type.
-//TODO #[derive(CommandDecoder)]
+#[derive(CommandDecoder)]
 enum ShoppingCartCommand {
     AddLineItem(AddLineItem),
     RemoveLineItem(RemoveLineItem),
@@ -210,38 +213,38 @@ trait CommandDecoder : Sized {
     fn decode(type_url: String, bytes: Bytes) -> Option<Self>;
 }
 
-//TODO should be derivable from ShoppingCartCommand
-impl CommandDecoder for ShoppingCartCommand {
-
-    fn decode(type_url: String, bytes: Bytes) -> Option<Self> {
-        match type_url.as_ref() {
-            "AddLineItem" => {
-                match <AddLineItem as Message>::decode(bytes) {
-                    Ok(command) => {
-                        println!("Received {:?}", command);
-                        Some(ShoppingCartCommand::AddLineItem(command))
-                    },
-                    Err(err) => {
-                        eprintln!("Error decoding AddLineItem command: {}", err);
-                        None
-                    },
-                }
-            },
-            "RemoveLineItem" => {
-                //TBD
-                None
-            },
-            "GetShoppingCart" => {
-                //TBD
-                None
-            },
-            unknown_command_type => {
-                eprintln!("Unknown command type: {}", unknown_command_type);
-                None
-            },
-        }
-    }
-}
+// //TODO should be derivable from ShoppingCartCommand
+// impl CommandDecoder for ShoppingCartCommand {
+//
+//     fn decode(type_url: String, bytes: Bytes) -> Option<Self> {
+//         match type_url.as_ref() {
+//             "AddLineItem" => {
+//                 match <AddLineItem as Message>::decode(bytes) {
+//                     Ok(command) => {
+//                         println!("Received {:?}", command);
+//                         Some(ShoppingCartCommand::AddLineItem(command))
+//                     },
+//                     Err(err) => {
+//                         eprintln!("Error decoding AddLineItem command: {}", err);
+//                         None
+//                     },
+//                 }
+//             },
+//             "RemoveLineItem" => {
+//                 //TBD
+//                 None
+//             },
+//             "GetShoppingCart" => {
+//                 //TBD
+//                 None
+//             },
+//             unknown_command_type => {
+//                 eprintln!("Unknown command type: {}", unknown_command_type);
+//                 None
+//             },
+//         }
+//     }
+// }
 
 impl EventSourcedEntity for ShoppingCartEntity {
 
@@ -350,8 +353,6 @@ impl EventSourcedSession {
                         println!("Can't handle a command until the entity is initialized!");
                     },
                 };
-
-                println!("cmd")
             },
         }
 

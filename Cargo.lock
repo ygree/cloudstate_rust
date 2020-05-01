@@ -69,6 +69,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
+name = "command_macro_derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "either"
 version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -659,6 +667,7 @@ version = "0.1.0"
 dependencies = [
  "async-stream",
  "bytes",
+ "command_macro_derive",
  "futures",
  "prost",
  "prost-types",
