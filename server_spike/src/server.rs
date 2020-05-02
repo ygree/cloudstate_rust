@@ -125,7 +125,25 @@ impl EventSourced for EventSourcedServerImpl {
 // this is untyped entity handler interface for the server implementation
 trait EventSourcedEntityHandler {
     fn snapshot_received(&mut self, type_url: String, bytes: Bytes);
-    fn command_received(&self, type_url: String, bytes: Bytes);
+    fn command_received(&mut self, type_url: String, bytes: Bytes);
+}
+
+trait HandleCommandContext {
+    type Event;
+
+    fn emit_event(&mut self, event: Self::Event);
+}
+
+struct CommandHandlerContext<T> {
+    events: Vec<T>,
+}
+
+impl<T> HandleCommandContext for CommandHandlerContext<T> {
+    type Event = T;
+
+    fn emit_event(&mut self, event: Self::Event) {
+        unimplemented!()
+    }
 }
 
 // this is typed entity handler interface to be implemented by user
@@ -135,6 +153,7 @@ trait EventSourcedEntity {
     // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
     type Snapshot : ::prost::Message + Default;
     type Command : CommandDecoder;
+    type Event;
 
     fn snapshot_loaded(&mut self, snapshot: Self::Snapshot);
 
@@ -159,15 +178,29 @@ trait EventSourcedEntity {
         <Self::Snapshot as Message>::decode(bytes) // explicitly call a trait's associated method
     }
 
-    fn command_received(&self, type_url: String, bytes: Bytes) {
+    // should be private
+    fn command_received(&mut self, type_url: String, bytes: Bytes) {
         if let Some(cmd) = <Self::Command as CommandDecoder>::decode(type_url, bytes) {
-            self.handle_command(cmd)
+
+            let mut context = CommandHandlerContext {
+                events: vec![],
+            };
+
+            self.handle_command(cmd, &mut context);
             //TODO call an event handler for new events
+
+            // apply events
+            for evt in context.events {
+                self.handle_event(evt);
+            }
+
             //TODO return an effect to be sent to Akka
         }
     }
 
-    fn handle_command(&self, command: Self::Command);
+    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>);
+
+    fn handle_event(&mut self, event: Self::Event);
 }
 
 // This provides automatic implementation of EventSourcedEntityHandler for the server from the user's EventSourcedEntity implementation
@@ -178,7 +211,7 @@ impl<T> EventSourcedEntityHandler for T
         self.snapshot_received(type_url, bytes)
     }
 
-    fn command_received(&self, type_url: String, bytes: Bytes) {
+    fn command_received(&mut self, type_url: String, bytes: Bytes) {
         self.command_received(type_url, bytes)
     }
 }
@@ -252,7 +285,7 @@ impl EventSourcedSession {
                 println!("evt")
             },
             Message::Command(cmd) => {
-                match &self {
+                match self {
                     EventSourcedSession::Initialized(entity) => {
                         println!("Handling a command!");
                         match cmd.payload {
