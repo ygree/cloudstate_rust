@@ -213,39 +213,6 @@ trait CommandDecoder : Sized {
     fn decode(type_url: String, bytes: Bytes) -> Option<Self>;
 }
 
-// //TODO should be derivable from ShoppingCartCommand
-// impl CommandDecoder for ShoppingCartCommand {
-//
-//     fn decode(type_url: String, bytes: Bytes) -> Option<Self> {
-//         match type_url.as_ref() {
-//             "AddLineItem" => {
-//                 match <AddLineItem as Message>::decode(bytes) {
-//                     Ok(command) => {
-//                         println!("Received {:?}", command);
-//                         Some(ShoppingCartCommand::AddLineItem(command))
-//                     },
-//                     Err(err) => {
-//                         eprintln!("Error decoding AddLineItem command: {}", err);
-//                         None
-//                     },
-//                 }
-//             },
-//             "RemoveLineItem" => {
-//                 //TBD
-//                 None
-//             },
-//             "GetShoppingCart" => {
-//                 //TBD
-//                 None
-//             },
-//             unknown_command_type => {
-//                 eprintln!("Unknown command type: {}", unknown_command_type);
-//                 None
-//             },
-//         }
-//     }
-// }
-
 impl EventSourcedEntity for ShoppingCartEntity {
 
     type Snapshot = Cart;

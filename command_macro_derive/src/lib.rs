@@ -1,9 +1,7 @@
-extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
 use syn;
-// use std::string::String;
 
 #[proc_macro_derive(CommandDecoder)]
 pub fn command_macro_derive(input: TokenStream) -> TokenStream {
@@ -17,14 +15,15 @@ pub fn command_macro_derive(input: TokenStream) -> TokenStream {
 
 fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
 
-    let name = &ast.ident;
+    let type_name = &ast.ident;
 
-    if let syn::Data::Enum(data_enum) = &ast.data {
-        for v in &data_enum.variants {
-            println!("!--> {}", &v.ident);
-            //TODO how to build a match out of the list of variants?
-        }
-    }
+    let variants = match &ast.data {
+        syn::Data::Enum(data_enum) => {
+            //TODO check that each variant contains only one unnamed field with a type that implements ::prost::Message trait
+            data_enum.variants.iter().map(|v| &v.ident).collect()
+        },
+        _ => vec![], //TODO return an error that only enums are supported
+    };
 
     let unknown_command = quote! {
         unknown_command_type => {
@@ -33,31 +32,35 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
         },
     };
 
-    let item = quote! {
-        "AddLineItem" => {
-            match <AddLineItem as Message>::decode(bytes) {
-                Ok(command) => {
-                    println!("Received {:?}", command);
-                    Some(ShoppingCartCommand::AddLineItem(command))
-                },
-                Err(err) => {
-                    eprintln!("Error decoding AddLineItem command: {}", err);
-                    None
-                },
-            }
-        },
-    };
+    let items: Vec<_> = variants.iter().map(|v| {
+        let variant_name = v.to_string();
+        quote!(
+            #variant_name => {
+                //TODO use variant param type instead of v here
+                match <#v as Message>::decode(bytes) {
+                    Ok(cmd) => {
+                        println!("Received {:?}", cmd);
+                        Some(#type_name::#v(cmd))
+                    },
+                    Err(err) => {
+                        eprintln!("Error decoding {} command: {}", #variant_name, err);
+                        None
+                    },
+                }
+            },
+        )
+    }).collect();
 
     let gen = quote! {
-        impl CommandDecoder for #name {
+        impl CommandDecoder for #type_name {
             fn decode(type_url: String, bytes: Bytes) -> Option<Self> {
                 match type_url.as_ref() {
-                    //TODO how to generate it out of enum variants?
-                    #item
+                    #(#items)*
                     #unknown_command
                 }
             }
         }
     };
+
     gen.into()
 }
