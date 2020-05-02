@@ -11,6 +11,9 @@ use std::pin::Pin;
 use futures::Stream;
 use bytes::Bytes;
 
+mod shopping_cart;
+
+use shopping_cart::ShoppingCartEntity;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -126,7 +129,7 @@ trait EventSourcedEntityHandler {
 }
 
 // this is typed entity handler interface to be implemented by user
-// NOTE: it can't be used by the server side because it has associated type
+// NOTE: it can't be used by the server side because it has associated types
 trait EventSourcedEntity {
 
     // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
@@ -180,63 +183,12 @@ impl<T> EventSourcedEntityHandler for T
     }
 }
 
-struct ShoppingCartEntity(Cart);
-
-impl Default for ShoppingCartEntity {
-    fn default() -> Self {
-        Self(
-            Cart {
-                items: vec![],
-            }
-        )
-    }
-}
-
-use protocols::example::shoppingcart::persistence::*;
 use prost::{DecodeError, Message};
 use std::sync::Arc;
 use std::marker::PhantomData;
-use protocols::example::shoppingcart::{ AddLineItem, RemoveLineItem, GetShoppingCart };
-
-use ::command_macro_derive::CommandDecoder;
-
-//TODO consider using Attribute-like macros, e.g. #[commands(AddLineItem, RemoveLineItem, GetShoppingCart)]
-// Combine command into one type.
-#[derive(CommandDecoder)]
-enum ShoppingCartCommand {
-    AddLineItem(AddLineItem),
-    RemoveLineItem(RemoveLineItem),
-    GetShoppingCart(GetShoppingCart),
-}
 
 trait CommandDecoder : Sized {
     fn decode(type_url: String, bytes: Bytes) -> Option<Self>;
-}
-
-impl EventSourcedEntity for ShoppingCartEntity {
-
-    type Snapshot = Cart;
-    type Command = ShoppingCartCommand;
-
-    fn snapshot_loaded(&mut self, snapshot: Self::Snapshot) {
-        self.0 = snapshot;
-        println!("Snapshot Loaded: {:?}", self.0);
-    }
-
-    fn handle_command(&self, command: Self::Command) {
-        match command {
-            ShoppingCartCommand::AddLineItem(add_line_item) => {
-                println!("Handle command: {:?}", add_line_item);
-            },
-            ShoppingCartCommand::RemoveLineItem(remove_line_item) => {
-                println!("Handle command: {:?}", remove_line_item);
-            },
-            ShoppingCartCommand::GetShoppingCart(get_shopping_cart) => {
-                println!("Handle command: {:?}", get_shopping_cart);
-            },
-        }
-
-    }
 }
 
 enum EventSourcedSession {
