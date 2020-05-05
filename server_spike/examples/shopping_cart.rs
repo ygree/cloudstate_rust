@@ -65,36 +65,36 @@ impl EventSourcedEntity for ShoppingCartEntity {
     type Command = ShoppingCartCommand;
     type Event = ShoppingCartEvent;
 
-    fn snapshot_loaded(&mut self, snapshot: Self::Snapshot) {
+    fn restore(&mut self, snapshot: Self::Snapshot) {
         self.0 = snapshot;
         println!("Snapshot Loaded: {:?}", self.0);
     }
 
     fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) {
         match command {
-            ShoppingCartCommand::AddLineItem(add_line_item) => {
-                println!("Handle command: {:?}", add_line_item);
+            ShoppingCartCommand::AddLineItem(item) => {
+                println!("Handle command: {:?}", item);
                 context.emit_event(
                     //TODO looks like too much boilerplate
                     ShoppingCartEvent::ItemAdded(
                         ItemAdded { //TODO maybe implement auto-conversion for: ItemAdded -> ShoppingCartEvent::ItemAdded
                             item: Some(
                                 LineItem {
-                                    product_id: add_line_item.product_id,
-                                    name: add_line_item.name,
-                                    quantity: add_line_item.quantity,
+                                    product_id: item.product_id,
+                                    name: item.name,
+                                    quantity: item.quantity,
                                 }
                             )
                         }
                     )
                 );
-            },
-            ShoppingCartCommand::RemoveLineItem(remove_line_item) => {
-                println!("Handle command: {:?}", remove_line_item);
-            },
-            ShoppingCartCommand::GetShoppingCart(get_shopping_cart) => {
-                println!("Handle command: {:?}", get_shopping_cart);
-            },
+            }
+            ShoppingCartCommand::RemoveLineItem(item) => {
+                println!("Handle command: {:?}", item);
+            }
+            ShoppingCartCommand::GetShoppingCart(cart) => {
+                println!("Handle command: {:?}", cart);
+            }
         }
     }
 

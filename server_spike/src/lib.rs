@@ -122,7 +122,7 @@ impl<T> HandleCommandContext for CommandHandlerContext<T> {
     type Event = T;
 
     fn emit_event(&mut self, event: Self::Event) {
-        unimplemented!()
+        self.events.push(event);
     }
 }
 
@@ -135,7 +135,7 @@ pub trait EventSourcedEntity {
     type Command : CommandDecoder;
     type Event;
 
-    fn snapshot_loaded(&mut self, snapshot: Self::Snapshot);
+    fn restore(&mut self, snapshot: Self::Snapshot);
 
     // This method is called by server and need to bind to the entity typed and delegate call to the user implementation
     fn snapshot_received(&mut self, type_url: String, bytes: Bytes) {
@@ -143,7 +143,7 @@ pub trait EventSourcedEntity {
         match self.decode_snapshot(bytes) {
             Ok(snapshot) => {
                 println!("Decoded: {:?}", snapshot);
-                self.snapshot_loaded(snapshot);
+                self.restore(snapshot);
             }
             Err(err) => {
                 eprintln!("Couldn't decode snapshot!");
