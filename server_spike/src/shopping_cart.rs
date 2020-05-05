@@ -1,16 +1,38 @@
 
-use ::command_macro_derive::CommandDecoder;
-use protocols::example::shoppingcart::{AddLineItem, RemoveLineItem, GetShoppingCart, persistence};
-use protocols::example::shoppingcart::persistence::{Cart, ItemAdded, ItemRemoved};
-use super::{EventSourcedEntity, CommandDecoder};
 use ::prost::Message;
 use bytes::Bytes;
-use crate::HandleCommandContext;
+use std::marker::PhantomData;
+use std::sync::Arc;
+use protocols::protocol::cloudstate::eventsourced::event_sourced_server::EventSourcedServer;
+use tonic::transport::Server;
+use protocols::example::shoppingcart::{
+    AddLineItem, RemoveLineItem, GetShoppingCart,
+    persistence::{Cart, ItemAdded, ItemRemoved, LineItem}
+};
+use server_spike::{EventSourcedEntity, CommandDecoder, HandleCommandContext, EntityRegistry, EventSourcedServerImpl};
+use command_macro_derive::CommandDecoder;
 
-#[derive(Default)]
-pub struct ShoppingCartEntity(Cart);
-//TODO use more convenient type for internal state, e.g. HashMap
+//TODO move it out to examples
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let addr = "[::1]:9000".parse().unwrap();
 
+    let mut registry = EntityRegistry(vec![]);
+    //TODO: Is there a way to pass a type that provides the Default trait instead of passing a function?
+    registry.add_entity("shopcart", ShoppingCartEntity::default);
+    registry.add_entity("shopcart2", ShoppingCartEntity::default);
+    registry.add_entity_type("shopcart3", PhantomData::<ShoppingCartEntity>);
+
+    let server = EventSourcedServerImpl(Arc::new(registry));
+
+    let svc = EventSourcedServer::new(server);
+
+    Server::builder().add_service(svc).serve(addr).await?;
+
+    Ok(())
+}
+
+//TODO find out how type is encoded to make sure that it's derivable from command types
 //TODO consider using Attribute-like macros, e.g. #[commands(AddLineItem, RemoveLineItem, GetShoppingCart)]
 // Combine command into one type.
 #[derive(CommandDecoder)]
@@ -35,6 +57,10 @@ pub enum ShoppingCartEvent {
 //     }
 // }
 
+#[derive(Default)]
+pub struct ShoppingCartEntity(Cart);
+//TODO use more convenient type for internal state, e.g. HashMap
+
 impl EventSourcedEntity for ShoppingCartEntity {
 
     type Snapshot = Cart;
@@ -53,9 +79,9 @@ impl EventSourcedEntity for ShoppingCartEntity {
                 context.emit_event(
                     //TODO looks like too much boilerplate
                     ShoppingCartEvent::ItemAdded(
-                        ItemAdded {
+                        ItemAdded { //TODO maybe implement auto-conversion for: ItemAdded -> ShoppingCartEvent::ItemAdded
                             item: Some(
-                                persistence::LineItem {
+                                LineItem {
                                     product_id: add_line_item.product_id,
                                     name: add_line_item.name,
                                     quantity: add_line_item.quantity,

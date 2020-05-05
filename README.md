@@ -5,7 +5,7 @@ A Rust version of [Cloudstate](https://cloudstate.io/docs/index.html) client app
 
 Run server:
 ```
-cargo run --bin spike-server
+cargo run --bin shopping-cart
 ```
 
 Run client:

@@ -11,34 +11,12 @@ use std::pin::Pin;
 use futures::Stream;
 use bytes::Bytes;
 
-mod shopping_cart;
-
-use shopping_cart::ShoppingCartEntity;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:9000".parse().unwrap();
-
-    let mut registry = EntityRegistry(vec![]);
-    //TODO: Is there a way to pass a type that provides the Default trait instead of passing a function?
-    registry.add_entity("shopcart", ShoppingCartEntity::default);
-    registry.add_entity("shopcart2", ShoppingCartEntity::default);
-    registry.add_entity_type("shopcart3", PhantomData::<ShoppingCartEntity>);
-
-    let server = EventSourcedServerImpl(Arc::new(registry));
-
-    let svc = EventSourcedServer::new(server);
-
-    Server::builder().add_service(svc).serve(addr).await?;
-
-    Ok(())
-}
-
 pub type MaybeEntityHandler = Option<Box<dyn EventSourcedEntityHandler + Send + Sync>>;
 
 type EntityHandlerFactory = Box<dyn Fn(&str) -> MaybeEntityHandler + Send + Sync>;
 
-struct EntityRegistry(Vec<EntityHandlerFactory>);
+//TODO try to implement an alternative fully typed registry to avoid allocations
+pub struct EntityRegistry(pub Vec<EntityHandlerFactory>);
 
 impl EntityRegistry {
 
@@ -76,7 +54,7 @@ impl EntityRegistry {
     }
 }
 
-struct EventSourcedServerImpl(Arc<EntityRegistry>);
+pub struct EventSourcedServerImpl(pub Arc<EntityRegistry>);
 
 #[tonic::async_trait]
 impl EventSourced for EventSourcedServerImpl {
@@ -123,15 +101,17 @@ impl EventSourced for EventSourcedServerImpl {
 }
 
 // this is untyped entity handler interface for the server implementation
-trait EventSourcedEntityHandler {
+pub trait EventSourcedEntityHandler {
     fn snapshot_received(&mut self, type_url: String, bytes: Bytes);
     fn command_received(&mut self, type_url: String, bytes: Bytes);
 }
 
-trait HandleCommandContext {
+pub trait HandleCommandContext {
     type Event;
 
     fn emit_event(&mut self, event: Self::Event);
+
+    //TODO implement fail()
 }
 
 struct CommandHandlerContext<T> {
@@ -148,7 +128,7 @@ impl<T> HandleCommandContext for CommandHandlerContext<T> {
 
 // this is typed entity handler interface to be implemented by user
 // NOTE: it can't be used by the server side because it has associated types
-trait EventSourcedEntity {
+pub trait EventSourcedEntity {
 
     // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
     type Snapshot : ::prost::Message + Default;
@@ -212,6 +192,8 @@ impl<T> EventSourcedEntityHandler for T
     }
 
     fn command_received(&mut self, type_url: String, bytes: Bytes) {
+        // can't decode command here because a real type is needed that is an associated type
+        // but associated types don't work with trait objects
         self.command_received(type_url, bytes)
     }
 }
@@ -220,7 +202,7 @@ use prost::{DecodeError, Message};
 use std::sync::Arc;
 use std::marker::PhantomData;
 
-trait CommandDecoder : Sized {
+pub trait CommandDecoder : Sized {
     fn decode(type_url: String, bytes: Bytes) -> Option<Self>;
 }
 
@@ -283,6 +265,7 @@ impl EventSourcedSession {
             },
             Message::Event(evt) => {
                 println!("evt")
+                //TODO decode event similar to command
             },
             Message::Command(cmd) => {
                 match self {
