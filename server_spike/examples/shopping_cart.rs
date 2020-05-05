@@ -12,13 +12,11 @@ use protocols::example::shoppingcart::{
 use server_spike::{EventSourcedEntity, CommandDecoder, HandleCommandContext, EntityRegistry, EventSourcedServerImpl};
 use command_macro_derive::CommandDecoder;
 
-//TODO move it out to examples
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:9000".parse().unwrap();
 
     let mut registry = EntityRegistry(vec![]);
-    //TODO: Is there a way to pass a type that provides the Default trait instead of passing a function?
     registry.add_entity("shopcart", ShoppingCartEntity::default);
     registry.add_entity("shopcart2", ShoppingCartEntity::default);
     registry.add_entity_type("shopcart3", PhantomData::<ShoppingCartEntity>);

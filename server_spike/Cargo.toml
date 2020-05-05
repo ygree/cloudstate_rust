@@ -23,7 +23,7 @@ bytes = "0.5.4"
 
 [[bin]]
 name = "shopping-cart"
-path = "src/shopping_cart.rs"
+path = "examples/shopping_cart.rs"
 
 [[bin]]
 name = "spike-client"
