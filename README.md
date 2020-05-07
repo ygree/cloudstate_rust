@@ -37,7 +37,29 @@ Entity implementation.
 
 - [x] Implement end user entity code to see how it may look like.
 - [x] Add shopping_cart proto files to the project and generate Rust files.
-    - [x] Generate proto classes out to the crates to navigate to in the IDE.    
+    - [x] Generate proto classes out to the crates to navigate to in the IDE.
+
+- [ ] Verify type name for incoming commands that are encoded as Any type
+
+    - [ ] Is it possible to get the full type_name out of the generated protobuf messages?
+    
+    - [ ] Implement correct type matching in `command_macro_derive`
+
+     * final val DefaultTypeUrlPrefix = "type.googleapis.com"
+
+     * Get the type's fully-qualified name, within the proto language's namespace. This differs from
+     * the Java name. For example, given this {@code .proto}:
+     *
+     * <pre>
+     *   package foo.bar;
+     *   option java_package = "com.example.protos"
+     *   message Baz {}
+     * </pre>
+     *
+     * {@code Baz}'s full name is "foo.bar.Baz".    
+     
+     
+    
 - [ ] There is a separate proto message for each type of command. How to handle it nicely?
 
 

@@ -33,6 +33,8 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
     };
 
     let items: Vec<_> = variants.iter().map(|v| {
+        //TODO Add type package. Need to pass the package name somehow, maybe as an enum attribute?
+        //TODO Use internal struct name as a type name for matching instead of the enum variant name!
         let variant_name = v.to_string();
         quote!(
             #variant_name => {

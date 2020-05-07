@@ -30,30 +30,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-//TODO find out how type is encoded to make sure that it's derivable from command types
-//TODO consider using Attribute-like macros, e.g. #[commands(AddLineItem, RemoveLineItem, GetShoppingCart)]
+//TODO specify a package to generate a type, eg "com.example.shoppingcart"
+//
+//TODO should ideally be generated out of the protobuf service definition
+//
 // Combine command into one type.
 #[derive(CommandDecoder)]
 pub enum ShoppingCartCommand {
     AddLineItem(AddLineItem),
     RemoveLineItem(RemoveLineItem),
     GetShoppingCart(GetShoppingCart),
+
+    //TODO: change the macro, so the commands can be named differently from the message type
+    // AddItem(AddLineItem),
+    // RemoveItem(RemoveLineItem),
+    // GetCart(GetShoppingCart),
 }
 
 pub enum ShoppingCartEvent {
     ItemAdded(ItemAdded),
     ItemRemoved(ItemRemoved),
 }
-
-// impl ShoppingCartEvent {
-//     fn from_message(msg: impl ::prost::Message) -> Option<ShoppingCartEvent> {
-//         match msg {
-//             cmd @ ItemAdded {..} => Some(cmd),
-//             cmd @ ItemRemoved {..} => Some(cmd),
-//             _ => None,
-//         }
-//     }
-// }
 
 #[derive(Default)]
 pub struct ShoppingCartEntity(Cart);

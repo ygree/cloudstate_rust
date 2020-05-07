@@ -65,10 +65,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let outbound = async_stream::stream! {
-        yield EventSourcedStreamIn{
+        yield EventSourcedStreamIn {
             message: Some(init_msg),
         };
-        yield EventSourcedStreamIn{
+        yield EventSourcedStreamIn {
             message: Some(cmd_msg),
         };
     };

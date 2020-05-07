@@ -17,8 +17,10 @@ impl ShoppingCartEntity {
     fn add_line_item(&self, cmd: AddLineItem, cx: &mut impl Context) {}
     fn remove_line_item(&self, cmd: RemoveLineItem, cx: &mut impl Context) {}
     fn get_shopping_cart(&self, cmd: GetShoppingCart, cx: &mut impl Context) -> Cart {}
+
     fn item_added(&mut self, evt: ItemAdded) {}
     fn item_removed(&mut self, evt: ItemRemoved) {}
+
     fn restore(&mut self, cart: persistence::Cart) {}
     fn snapshot(&self) -> persistence::Cart {
         let items = self.0.items.iter().map_into( |item|

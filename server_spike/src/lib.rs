@@ -2,10 +2,9 @@
 use protocols::protocol::cloudstate::eventsourced::{
     EventSourcedStreamIn, EventSourcedStreamOut, EventSourcedReply,
     event_sourced_stream_in, event_sourced_stream_out,
-    event_sourced_server::{EventSourced, EventSourcedServer}
+    event_sourced_server::EventSourced
 };
 use tonic::{Status, Streaming, Response, Request};
-use tonic::transport::Server;
 use std::pin::Pin;
 // use futures_core::Stream; // TODO: it caused compile issues
 use futures::Stream;
@@ -20,7 +19,7 @@ pub struct EntityRegistry(pub Vec<EntityHandlerFactory>);
 
 impl EntityRegistry {
 
-    pub fn add_entity_type<T>(&mut self, service_name: &str, entity: PhantomData<T>)
+    pub fn add_entity_type<T>(&mut self, service_name: &str, _entity: PhantomData<T>)
         where T: EventSourcedEntityHandler + Default + Send + Sync + 'static
     {
         self.add_entity(service_name, || <T as Default>::default());
@@ -138,14 +137,13 @@ pub trait EventSourcedEntity {
     fn restore(&mut self, snapshot: Self::Snapshot);
 
     // This method is called by server and need to bind to the entity typed and delegate call to the user implementation
-    fn snapshot_received(&mut self, type_url: String, bytes: Bytes) {
-        use ::prost::Message; // import Message trait to call decode on Snapshot
+    fn snapshot_received(&mut self, _type_url: String, bytes: Bytes) {
         match self.decode_snapshot(bytes) {
             Ok(snapshot) => {
                 println!("Decoded: {:?}", snapshot);
                 self.restore(snapshot);
             }
-            Err(err) => {
+            Err(_err) => {
                 eprintln!("Couldn't decode snapshot!");
             },
         }
@@ -153,7 +151,6 @@ pub trait EventSourcedEntity {
 
     fn decode_snapshot(&self, bytes: Bytes) -> Result<Self::Snapshot, DecodeError> {
         // default implementation that can be overridden if needed
-        use ::prost::Message; // import Message trait to call decode on Snapshot
         // Self::Snapshot::decode(bytes)
         <Self::Snapshot as Message>::decode(bytes) // explicitly call a trait's associated method
     }
@@ -187,10 +184,12 @@ pub trait EventSourcedEntity {
 impl<T> EventSourcedEntityHandler for T
     where T: EventSourcedEntity {
 
+    #[inline]
     fn snapshot_received(&mut self, type_url: String, bytes: Bytes) {
         self.snapshot_received(type_url, bytes)
     }
 
+    #[inline]
     fn command_received(&mut self, type_url: String, bytes: Bytes) {
         // can't decode command here because a real type is needed that is an associated type
         // but associated types don't work with trait objects
@@ -229,7 +228,7 @@ impl EventSourcedSession {
 
     fn handle_known_msg(&mut self, known_msg: event_sourced_stream_in::Message) -> Option<EventSourcedStreamOut> {
         use event_sourced_stream_in::Message;
-        use protocols::example::shoppingcart::persistence::*;
+        // use protocols::example::shoppingcart::persistence::*;
 
         match known_msg {
             Message::Init(init) => {
@@ -256,14 +255,14 @@ impl EventSourcedSession {
                                     },
                                 }
                             }
-                            EventSourcedSession::Initialized(entity) => {
+                            EventSourcedSession::Initialized(_entity) => {
                                 println!("Entity already initialized!");
                             },
                         };
                     }
                 }
             },
-            Message::Event(evt) => {
+            Message::Event(_evt) => {
                 println!("evt")
                 //TODO decode event similar to command
             },
