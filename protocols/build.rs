@@ -31,4 +31,6 @@ fn main() {
             "frontend",
         ])
         .expect("failed to compile protos");
+
+    //TODO implement a custom ServiceGenerator to generate service specific command types with access to package name for unmarshaling code generation.
 }

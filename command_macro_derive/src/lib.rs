@@ -2,6 +2,8 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use syn;
+use syn::{Fields, FieldsUnnamed, Field, Type};
+use std::any::Any;
 
 #[proc_macro_derive(CommandDecoder)]
 pub fn command_macro_derive(input: TokenStream) -> TokenStream {
@@ -16,11 +18,44 @@ pub fn command_macro_derive(input: TokenStream) -> TokenStream {
 fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
 
     let type_name = &ast.ident;
+    println!("&ast.attrs = {:?}", &ast.attrs);
 
-    let variants = match &ast.data {
+    let variants: Vec<(_, _)> = match &ast.data {
         syn::Data::Enum(data_enum) => {
             //TODO check that each variant contains only one unnamed field with a type that implements ::prost::Message trait
-            data_enum.variants.iter().map(|v| &v.ident).collect()
+            data_enum.variants.iter().map(|v| {
+
+                let field_ident = match v.fields {
+                    Fields::Unnamed(FieldsUnnamed{ ref unnamed, .. }) => {
+                        let fs: Vec<&Field> = unnamed.iter().collect();
+                        if fs.len() == 1 {
+                            match &fs[0].ty {
+                                Type::Path(type_path) => {
+                                    if let Some(ident) = type_path.path.get_ident() {
+                                        ident
+                                    }
+                                    else {
+                                        panic!("Boom!") //TODO properly handle it
+                                    }
+                                },
+                                _ => {
+                                    panic!("Boom!") //TODO properly handle it
+                                },
+                            }
+                            //==> type = Path(TypePath { qself: None, path: Path { leading_colon: None, segments: [PathSegment { ident: Ident { ident: "GetShoppingCart", span: #0 bytes(1423..1438) }, arguments: None }] } })
+                        }
+                        else {
+                            panic!("Exactly one unnamed paramater supported only!") //TODO properly handle it
+                        }
+                    },
+                    _ => {
+                        panic!("Only unnamed fields are supported!") //TODO properly handle it
+                    }
+                };
+
+
+                (&v.ident, field_ident)
+            }).collect()
         },
         _ => vec![], //TODO return an error that only enums are supported
     };
@@ -32,17 +67,18 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
         },
     };
 
-    let items: Vec<_> = variants.iter().map(|v| {
+    let items: Vec<_> = variants.iter().map(|(enum_id, field_id)| {
         //TODO Add type package. Need to pass the package name somehow, maybe as an enum attribute?
         //TODO Use internal struct name as a type name for matching instead of the enum variant name!
-        let variant_name = v.to_string();
+        let variant_name = enum_id.to_string();
+        let field_type_name = field_id.to_string();
         quote!(
-            #variant_name => {
+            #field_type_name => {
                 //TODO use variant param type instead of v here
-                match <#v as Message>::decode(bytes) {
+                match <#field_id as Message>::decode(bytes) {
                     Ok(cmd) => {
                         println!("Received {:?}", cmd);
-                        Some(#type_name::#v(cmd))
+                        Some(#type_name::#enum_id(cmd))
                     },
                     Err(err) => {
                         eprintln!("Error decoding {} command: {}", #variant_name, err);

@@ -37,14 +37,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 // Combine command into one type.
 #[derive(CommandDecoder)]
 pub enum ShoppingCartCommand {
-    AddLineItem(AddLineItem),
-    RemoveLineItem(RemoveLineItem),
-    GetShoppingCart(GetShoppingCart),
-
-    //TODO: change the macro, so the commands can be named differently from the message type
-    // AddItem(AddLineItem),
-    // RemoveItem(RemoveLineItem),
-    // GetCart(GetShoppingCart),
+    AddLine(AddLineItem),
+    RemoveLine(RemoveLineItem),
+    GetCart(GetShoppingCart),
 }
 
 pub enum ShoppingCartEvent {
@@ -69,7 +64,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
 
     fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) {
         match command {
-            ShoppingCartCommand::AddLineItem(item) => {
+            ShoppingCartCommand::AddLine(item) => {
                 println!("Handle command: {:?}", item);
                 context.emit_event(
                     //TODO looks like too much boilerplate
@@ -86,10 +81,10 @@ impl EventSourcedEntity for ShoppingCartEntity {
                     )
                 );
             }
-            ShoppingCartCommand::RemoveLineItem(item) => {
+            ShoppingCartCommand::RemoveLine(item) => {
                 println!("Handle command: {:?}", item);
             }
-            ShoppingCartCommand::GetShoppingCart(cart) => {
+            ShoppingCartCommand::GetCart(cart) => {
                 println!("Handle command: {:?}", cart);
             }
         }
