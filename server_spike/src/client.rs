@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let snapshot = EventSourcedSnapshot {
         snapshot_sequence: 42i64,
-        snapshot: Some(create_any("com.example/shoppingcart.persistence.Cart".to_string(), cart)),
+        snapshot: Some(create_any("type.googleapis.com/com.example.shoppingcart.persistence.Cart".to_string(), cart)),
     };
 
     use event_sourced_stream_in::Message;
@@ -60,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         entity_id: "shopcart_entity_id".to_string(),
         id: 56i64,
         name: "command_name".to_string(),
-        payload: Some(create_any("AddLineItem".to_owned(), add_line_item)),
+        payload: Some(create_any("type.googleapis.com/com.example.shoppingcart.AddLineItem".to_owned(), add_line_item)),
         streamed: false,
     });
 
