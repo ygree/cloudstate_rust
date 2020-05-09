@@ -13,7 +13,7 @@ use ::prost_types::Any;
 fn create_any(type_url: String, msg: impl ::prost::Message) -> ::prost_types::Any {
     use bytes::BufMut;
     let mut buf = vec![];
-    msg.encode(&mut buf);
+    msg.encode(&mut buf); //TODO returns Result
     ::prost_types::Any {
         type_url,
         value: buf,

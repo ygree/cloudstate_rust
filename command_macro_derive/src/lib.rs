@@ -3,7 +3,6 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn;
 use syn::{Fields, FieldsUnnamed, Field, Type};
-use std::any::Any;
 
 #[proc_macro_derive(CommandDecoder)]
 pub fn command_macro_derive(input: TokenStream) -> TokenStream {
@@ -18,7 +17,6 @@ pub fn command_macro_derive(input: TokenStream) -> TokenStream {
 fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
 
     let type_name = &ast.ident;
-    println!("&ast.attrs = {:?}", &ast.attrs);
 
     let variants: Vec<(_, _)> = match &ast.data {
         syn::Data::Enum(data_enum) => {
