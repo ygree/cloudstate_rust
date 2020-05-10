@@ -5,6 +5,5 @@ members = [
     "entity_spike",
     "server_spike",
     "command_macro_derive",
-    "command_macro_derive/tests",
 ]
 

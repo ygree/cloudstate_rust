@@ -72,7 +72,10 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 name = "command_macro_derive"
 version = "0.1.0"
 dependencies = [
+ "bytes",
+ "prost",
  "quote",
+ "server-spike",
  "syn",
 ]
 
@@ -709,16 +712,6 @@ dependencies = [
  "redox_syscall",
  "remove_dir_all",
  "winapi 0.3.8",
-]
-
-[[package]]
-name = "tests"
-version = "0.1.0"
-dependencies = [
- "bytes",
- "command_macro_derive",
- "prost",
- "server-spike",
 ]
 
 [[package]]
