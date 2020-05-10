@@ -30,11 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-//TODO specify a package to generate a type, eg "com.example.shoppingcart"
-//
-//TODO should ideally be generated out of the protobuf service definition
-//
-// Combine command into one type.
+// Commands
 #[derive(CommandDecoder)]
 pub enum ShoppingCartCommand {
     AddLine(AddLineItem),
@@ -42,14 +38,15 @@ pub enum ShoppingCartCommand {
     GetCart(GetShoppingCart),
 }
 
+// Events
 pub enum ShoppingCartEvent {
     ItemAdded(ItemAdded),
     ItemRemoved(ItemRemoved),
 }
 
 #[derive(Default)]
-pub struct ShoppingCartEntity(Cart);
 //TODO use more convenient type for internal state, e.g. HashMap
+pub struct ShoppingCartEntity(Cart);
 
 impl EventSourcedEntity for ShoppingCartEntity {
 
