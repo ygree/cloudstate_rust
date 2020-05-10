@@ -7,3 +7,10 @@ members = [
     "command-macro-derive",
 ]
 
+[patch.crates-io]
+# Override Prost dependencies to experiment with injecting protobuf package into the generated code
+prost = { path = "../prost" }
+prost-types = { path = "../prost/prost-types" }
+prost-derive = { path = "../prost/prost-derive" }
+prost-build = { path = "../prost/prost-build" }
+
