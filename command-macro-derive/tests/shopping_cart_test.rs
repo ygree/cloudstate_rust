@@ -16,7 +16,7 @@ fn test_command_decoder() {
 
     let bytes = encode(&msg);
 
-    let result = <ShoppingCartCommand as CommandDecoder>::decode("AddLineItem".to_owned(), bytes);
+    let result = <ShoppingCartCommand as CommandDecoder>::decode("type.googleapis.com/com.example.shoppingcart.AddLineItem".to_owned(), bytes);
 
     assert_eq!(result, Some(ShoppingCartCommand::AddLine(msg)));
 }
@@ -27,7 +27,7 @@ fn test_command_decoder_with_incorrect_type() {
 
     let bytes = encode(&msg);
 
-    let result = <ShoppingCartCommand as CommandDecoder>::decode("wrong-type".to_owned(), bytes);
+    let result = <ShoppingCartCommand as CommandDecoder>::decode("AddLineItem".to_owned(), bytes);
 
     assert_eq!(result, None);
 }

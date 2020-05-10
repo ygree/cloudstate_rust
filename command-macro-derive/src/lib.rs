@@ -15,7 +15,6 @@ pub fn command_macro_derive(input: TokenStream) -> TokenStream {
 }
 
 fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
-
     let type_name = &ast.ident;
 
     let variants: Vec<(_, _)> = match &ast.data {
@@ -66,13 +65,16 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
     };
 
     let items: Vec<_> = variants.iter().map(|(enum_id, field_id)| {
-        //TODO Add type package. Need to pass the package name somehow, maybe as an enum attribute?
-        //TODO Use internal struct name as a type name for matching instead of the enum variant name!
         let variant_name = enum_id.to_string();
-        let field_type_name = field_id.to_string();
+        // Prepend with `.` to make sure that it fully matches the command name without package.
+        // It should protect from when there is an overlapping part in the command names, e.g
+        // `AddItem` and `CreateAndAddItem`.
+        let field_type_suffix_name = ".".to_string() + &field_id.to_string();
+        // Protobuf package name is not available. So, can only check that `type_name` ends with `field_type_name`.
+        // Can't use internal rust type name `std::any::type_name::<T>()` because it may differ from the protobuf package.
+        // TODO: maybe extend prost to provide a protobuf package name as an attribute
         quote!(
-            #field_type_name => {
-                //TODO use variant param type instead of v here
+            s if s.ends_with(#field_type_suffix_name) => {
                 match <#field_id as Message>::decode(bytes) {
                     Ok(cmd) => {
                         println!("Received {:?}", cmd);
@@ -90,7 +92,7 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         impl CommandDecoder for #type_name {
             fn decode(type_url: String, bytes: Bytes) -> Option<Self> {
-                match type_url.as_ref() {
+                match type_url {
                     #(#items)*
                     #unknown_command
                 }
@@ -100,3 +102,18 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
 
     gen.into()
 }
+
+#[test]
+fn foo() {
+    let type_name = "type.googleapis.com/com.example.shoppingcart.AddLineItem".to_owned();
+
+    let match_with = ".".to_string() + "AddLineItem";
+
+    let result = match type_name {
+        s if s.ends_with(&match_with) => true,
+        _ => false,
+    };
+
+    assert!(result);
+}
+

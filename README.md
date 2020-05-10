@@ -41,8 +41,35 @@ Entity implementation.
 
 - [ ] Verify type name for incoming commands that are encoded as Any type
 
+    - [x] Had an idea to try until succeed but it won't work because deserialization may work for a wrong type, e.g. RemoveLine instead of AddLine
+        That's because the RemoteLine has a subset of AddLine's fields.
+        So, this approach is not valid because it could change the meaning of the command completely.
+            ```
+            impl CommandDecoder for ShoppingCartCommand {
+                fn decode(type_url: String, bytes: Bytes) -> Option<Self> {
+                    let mut bytes_mut = bytes;
+                    //
+                    let result = <AddLineItem as Message>::decode(&mut bytes_mut).map(|v| Some(ShoppingCartCommand::AddLine(v)));
+                    // should try the next if this one failed and so forth
+                    let result = <RemoveLineItem as Message>::decode(&mut bytes_mut).map(|v| Some(ShoppingCartCommand::RemoveLine(v)));
+                    let result = <GetShoppingCart as Message>::decode(&mut bytes_mut).map(|v| Some(ShoppingCartCommand::GetCart(v)));
+                    let result = result.unwrap_or_else(|_| None);
+                    //
+                    result
+                }
+            }
+            ```
+
     - [ ] Is it possible to get the full type_name out of the generated protobuf messages?
-    
+        There are two possible ways
+        - [ ] Provide the type name as an attribute, so the derive macro can use it.
+        - [ ] Enhance Prost to preserve package name as an attribute for the generated message types.
+        - [ ] Implement custom code generator that will preserve a prototype package.
+            That will only solve it for event-sourced command, but we need more general solution that will work for 
+            events and all possible messages. It will allow to wrap any message into protobuf Any type and decode it back.
+        - [x] Temporal simple solution can only match the message type name and ignore the package completely.
+            E.g. instead of matching `type.googleapis.com/com.example.shoppingcart.AddLineItem` match only the last part `.AddLineItem`.
+            
     - [ ] Implement correct type matching in `command_macro_derive`
 
      * final val DefaultTypeUrlPrefix = "type.googleapis.com"
@@ -60,7 +87,8 @@ Entity implementation.
      
      
     
-- [ ] There is a separate proto message for each type of command. How to handle it nicely?
+- [x] There is a separate proto message for each type of command. How to handle it nicely?
+    Group it into one type, e.g. enum.
 
 
 ### entity_server
