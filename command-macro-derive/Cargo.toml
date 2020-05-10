@@ -1,5 +1,5 @@
 [package]
-name = "command_macro_derive"
+name = "command-macro-derive"
 version = "0.1.0"
 authors = ["Yury Gribkov <yury.gribkov@gmail.com>"]
 edition = "2018"
@@ -16,4 +16,4 @@ quote = "1.0"
 [dev-dependencies]
 bytes = "0.5.4"
 prost = "0.6"
-server-spike = { path = "../server_spike" }
+server-spike = { path = "../server-spike" }

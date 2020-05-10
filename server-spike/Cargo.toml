@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 protocols = { path = "../protocols" }
-command_macro_derive = { path = "../command_macro_derive" }
+command-macro-derive = { path = "../command-macro-derive" }
 tonic = "0.2"
 prost = "0.6"
 prost-types = "0.6"

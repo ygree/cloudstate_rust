@@ -2,8 +2,8 @@
 
 members = [
     "protocols",
-    "entity_spike",
-    "server_spike",
-    "command_macro_derive",
+    "entity-spike",
+    "server-spike",
+    "command-macro-derive",
 ]
 
