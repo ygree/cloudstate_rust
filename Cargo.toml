@@ -1,10 +1,10 @@
 [workspace]
 
 members = [
+    "command-macro-derive",
     "protocols",
     "entity-spike",
     "server-spike",
-    "command-macro-derive",
 ]
 
 [patch.crates-io]

@@ -22,6 +22,10 @@ fn main() {
         // Skip server / client generation for the example because it's implemented by Cloudstate sidecar.
         .build_server(false)
         .build_client(false)
+        // TODO this approach doesn't work either because of
+        //  error: macro attributes must be placed before `#[derive]`
+        //  Consider submit a PR for tonic-build or to prost
+        // .type_attribute("com.example.shoppingcart.AddLineItem", "#[proto_type_macro::proto_type]")
         .out_dir("src/example/shoppingcart")
         .compile(&[
             "example/shoppingcart/persistence/domain.proto",

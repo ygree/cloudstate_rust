@@ -73,6 +73,7 @@ name = "command-macro-derive"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "proc-macro2",
  "prost",
  "quote",
  "server-spike",

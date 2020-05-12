@@ -61,16 +61,17 @@ Entity implementation.
             ```
 
     - [ ] Is it possible to get the full type_name out of the generated protobuf messages?
-        There are two possible ways
-        - [ ] Provide the type name as an attribute, so the derive macro can use it.
-        - [ ] Enhance Prost to preserve package name as an attribute for the generated message types.
-        - [ ] Implement custom code generator that will preserve a prototype package.
-            That will only solve it for event-sourced command, but we need more general solution that will work for 
-            events and all possible messages. It will allow to wrap any message into protobuf Any type and decode it back.
-        - [x] Temporal simple solution can only match the message type name and ignore the package completely.
+        - [-] Temporal simple solution can only match the message type name and ignore the package completely.
             E.g. instead of matching `type.googleapis.com/com.example.shoppingcart.AddLineItem` match only the last part `.AddLineItem`.
+            It doesn't solve an issue at all, because there may be overlapping names, e.g. `AddLineItem` and `CreateAddLineItem`
+            Also it doesn't solve encoding problem. As we need to send an event back to the frontend we will need to encode it's type in Any.
+        - [ ] Enhance Prost to preserve package name as an attribute for the generated message types.
+            It can be done by adding an extra attribute to a generated types, e.g. `prost(package = <...>)`
+            This logic should be placed in `prost-build/src/code_generator.rs/append_message`.
+        - [x] Provide the type name as an attribute, so the derive macro can use it.
+            That's currently the only possible solution that can be replaced in the future if needed and it can also coexist with other solutions.
             
-    - [ ] Implement correct type matching in `command_macro_derive`
+    - [x] Implement correct type matching in `command_macro_derive`
 
      * final val DefaultTypeUrlPrefix = "type.googleapis.com"
 

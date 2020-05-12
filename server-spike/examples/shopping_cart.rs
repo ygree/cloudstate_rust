@@ -31,6 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 // Commands
+#[package="com.example.shoppingcart"]
 #[derive(CommandDecoder)]
 pub enum ShoppingCartCommand {
     AddLine(AddLineItem),
@@ -39,6 +40,7 @@ pub enum ShoppingCartCommand {
 }
 
 // Events
+// #[package="com.example.shoppingcart.persistence"]
 pub enum ShoppingCartEvent {
     ItemAdded(ItemAdded),
     ItemRemoved(ItemRemoved),

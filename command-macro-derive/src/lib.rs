@@ -1,10 +1,10 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn;
-use syn::{Fields, FieldsUnnamed, Field, Type};
+use syn::{self, parse_macro_input, Fields, FieldsUnnamed, Field, Type, Result, Token, LitStr};
+use syn::parse::{Parse, ParseStream};
 
-#[proc_macro_derive(CommandDecoder)]
+#[proc_macro_derive(CommandDecoder, attributes(package))]
 pub fn command_macro_derive(input: TokenStream) -> TokenStream {
     // Construct a representation of Rust code as a syntax tree
     // that we can manipulate
@@ -12,10 +12,29 @@ pub fn command_macro_derive(input: TokenStream) -> TokenStream {
 
     // Build the trait implementation
     impl_command_macro(&ast)
+
+    // TODO re-implement impl_command_macro with using parsers
+    // let input = parse_macro_input!(input as Item);
+    // quote!().into()
+}
+
+struct ProtobufPacket(String);
+
+impl Parse for ProtobufPacket {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let _: Token![=] = input.parse()?;
+        let package_name: LitStr = input.parse()?;
+        Ok(ProtobufPacket(package_name.value()))
+    }
 }
 
 fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
     let type_name = &ast.ident;
+
+    //TODO Improve usability. Provide a good error message when the package name is missing.
+    let attr_tokens = &ast.attrs[0].tokens;
+    let tks = proc_macro::TokenStream::from(attr_tokens.clone());
+    let protobuf_packet = parse_macro_input!(tks as ProtobufPacket);
 
     let variants: Vec<(_, _)> = match &ast.data {
         syn::Data::Enum(data_enum) => {
@@ -66,15 +85,9 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
 
     let items: Vec<_> = variants.iter().map(|(enum_id, field_id)| {
         let variant_name = enum_id.to_string();
-        // Prepend with `.` to make sure that it fully matches the command name without package.
-        // It should protect from when there is an overlapping part in the command names, e.g
-        // `AddItem` and `CreateAndAddItem`.
-        let field_type_suffix_name = ".".to_string() + &field_id.to_string();
-        // Protobuf package name is not available. So, can only check that `type_name` ends with `field_type_name`.
-        // Can't use internal rust type name `std::any::type_name::<T>()` because it may differ from the protobuf package.
-        // TODO: maybe extend prost to provide a protobuf package name as an attribute
+        let full_type = format!("type.googleapis.com/{}.{}", protobuf_packet.0, &field_id.to_string());
         quote!(
-            s if s.ends_with(#field_type_suffix_name) => {
+            #full_type => {
                 match <#field_id as Message>::decode(bytes) {
                     Ok(cmd) => {
                         println!("Received {:?}", cmd);
@@ -92,7 +105,7 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         impl CommandDecoder for #type_name {
             fn decode(type_url: String, bytes: Bytes) -> Option<Self> {
-                match type_url {
+                match type_url.as_ref() {
                     #(#items)*
                     #unknown_command
                 }
@@ -111,6 +124,18 @@ fn foo() {
 
     let result = match type_name {
         s if s.ends_with(&match_with) => true,
+        _ => false,
+    };
+
+    assert!(result);
+}
+
+#[test]
+fn bar() {
+    let type_name = "yes".to_string();
+
+    let result = match type_name.as_ref() {
+        "yes" => true,
         _ => false,
     };
 
