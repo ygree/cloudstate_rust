@@ -1,21 +1,13 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{self, parse_macro_input, Fields, FieldsUnnamed, Field, Type, Result, Token, LitStr};
+use syn::{self, parse_macro_input, Attribute, DataStruct, Fields, FieldsUnnamed, Field, Type, Result, Token, LitStr, DataEnum};
 use syn::parse::{Parse, ParseStream};
 
 #[proc_macro_derive(CommandDecoder, attributes(package))]
 pub fn command_macro_derive(input: TokenStream) -> TokenStream {
-    // Construct a representation of Rust code as a syntax tree
-    // that we can manipulate
     let ast = syn::parse(input).unwrap();
-
-    // Build the trait implementation
     impl_command_macro(&ast)
-
-    // TODO re-implement impl_command_macro with using parsers
-    // let input = parse_macro_input!(input as Item);
-    // quote!().into()
 }
 
 struct ProtobufPacket(String);
@@ -31,16 +23,26 @@ impl Parse for ProtobufPacket {
 fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
     let type_name = &ast.ident;
 
-    //TODO Improve usability. Provide a good error message when the package name is missing.
-    let attr_tokens = &ast.attrs[0].tokens;
-    let tks = proc_macro::TokenStream::from(attr_tokens.clone());
-    let protobuf_packet = parse_macro_input!(tks as ProtobufPacket);
+    let attrs = &ast.attrs;
+
+    let package_attr_opt = attrs.iter().find(|a| {
+        a.path.segments.iter().find(|p| {
+            p.ident.to_string() == "package"
+        }).is_some()
+    });
+
+    let protobuf_packet =
+        if let Some(package_attr) = package_attr_opt {
+            let tks = proc_macro::TokenStream::from(package_attr.tokens.clone());
+            parse_macro_input!(tks as ProtobufPacket)
+        } else {
+            panic!("Not found package attribute!")
+        };
 
     let variants: Vec<(_, _)> = match &ast.data {
         syn::Data::Enum(data_enum) => {
             //TODO check that each variant contains only one unnamed field with a type that implements ::prost::Message trait
             data_enum.variants.iter().map(|v| {
-
                 let field_ident = match v.fields {
                     Fields::Unnamed(FieldsUnnamed{ ref unnamed, .. }) => {
                         let fs: Vec<&Field> = unnamed.iter().collect();
@@ -51,11 +53,11 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
                                         ident
                                     }
                                     else {
-                                        panic!("Boom!") //TODO properly handle it
+                                        panic!("Only single non-generic struct parameter is allowed for enum variant: {}!", v.ident) //TODO properly handle it
                                     }
                                 },
                                 _ => {
-                                    panic!("Boom!") //TODO properly handle it
+                                    panic!("Only single non-generic struct parameter is allowed for enum variant {}!", v.ident) //TODO properly handle it
                                 },
                             }
                             //==> type = Path(TypePath { qself: None, path: Path { leading_colon: None, segments: [PathSegment { ident: Ident { ident: "GetShoppingCart", span: #0 bytes(1423..1438) }, arguments: None }] } })
@@ -69,12 +71,13 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
                     }
                 };
 
-
                 (&v.ident, field_ident)
             }).collect()
         },
         _ => vec![], //TODO return an error that only enums are supported
     };
+
+    //TODO split parsing from code-generation
 
     let unknown_command = quote! {
         unknown_command_type => {

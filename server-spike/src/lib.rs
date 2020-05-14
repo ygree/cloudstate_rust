@@ -164,7 +164,6 @@ pub trait EventSourcedEntity {
             };
 
             self.handle_command(cmd, &mut context);
-            //TODO call an event handler for new events
 
             // apply events
             for evt in context.events {
@@ -203,6 +202,8 @@ use std::marker::PhantomData;
 
 pub trait CommandDecoder : Sized {
     fn decode(type_url: String, bytes: Bytes) -> Option<Self>;
+
+    // fn encode(&self) -> Option<(String, Bytes)>;
 }
 
 enum EventSourcedSession {
