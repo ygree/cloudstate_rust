@@ -3,6 +3,12 @@ name = "command-macro-derive"
 version = "0.1.0"
 authors = ["Yury Gribkov <yury.gribkov@gmail.com>"]
 edition = "2018"
+autotests = false
+publish = false
+
+[[test]]
+name = "tests"
+path = "tests/all.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,8 +19,11 @@ proc-macro = true
 syn = "1.0"
 quote = "1.0"
 proc-macro2 = "1.0.10"
+anyhow = "1.0.30"
 
 [dev-dependencies]
 bytes = "0.5.4"
 prost = "0.6"
 server-spike = { path = "../server-spike" }
+trybuild = "1.0"
+

@@ -14,7 +14,6 @@ pub enum ShoppingCartCommand {
     GetCart(GetShoppingCart),
 }
 
-#[test]
 fn test_command_decoder() {
     let msg = add_line_item();
 
@@ -25,7 +24,6 @@ fn test_command_decoder() {
     assert_eq!(result, Some(ShoppingCartCommand::AddLine(msg)));
 }
 
-#[test]
 fn test_command_decoder_with_incorrect_type() {
     let msg = add_line_item();
 
@@ -34,4 +32,9 @@ fn test_command_decoder_with_incorrect_type() {
     let result = <ShoppingCartCommand as CommandDecoder>::decode("AddLineItem".to_owned(), bytes);
 
     assert_eq!(result, None);
+}
+
+fn main() {
+    test_command_decoder();
+    test_command_decoder_with_incorrect_type();
 }

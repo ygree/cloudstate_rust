@@ -1,8 +1,9 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{self, parse_macro_input, Attribute, DataStruct, Fields, FieldsUnnamed, Field, Type, Result, Token, LitStr, DataEnum};
+use syn::{self, parse_macro_input, Fields, FieldsUnnamed, Field, Type, Result, Token, LitStr};
 use syn::parse::{Parse, ParseStream};
+use syn::spanned::Spanned;
 
 #[proc_macro_derive(CommandDecoder, attributes(package))]
 pub fn command_macro_derive(input: TokenStream) -> TokenStream {
@@ -34,7 +35,15 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
     let protobuf_packet =
         if let Some(package_attr) = package_attr_opt {
             let tks = proc_macro::TokenStream::from(package_attr.tokens.clone());
-            parse_macro_input!(tks as ProtobufPacket)
+            // TODO pass package_attr.span() to point to in the error message
+            //  instead of parse_macro_input!(tks as ProtobufPacket) that will point to the derive macro
+            match parse_macro_input::parse::<ProtobufPacket>(tks)
+                .map_err(|e| syn::Error::new(package_attr.span(), e.to_string())) {
+                Ok(data) => data,
+                Err(err) => {
+                    return TokenStream::from(err.to_compile_error());
+                }
+            }
         } else {
             panic!("Not found package attribute!")
         };
