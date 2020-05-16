@@ -14,7 +14,8 @@ use command_macro_derive::CommandDecoder;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:9000".parse().unwrap();
+    // let addr = "[::1]:8088".parse().unwrap();
+    let addr = "0.0.0.0:8088".parse().unwrap();
 
     let mut registry = EntityRegistry(vec![]);
     registry.add_entity("shopcart", ShoppingCartEntity::default);

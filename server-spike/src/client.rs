@@ -22,7 +22,8 @@ fn create_any(type_url: String, msg: impl ::prost::Message) -> ::prost_types::An
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = EventSourcedClient::connect("http://[::1]:9000").await?;
+    // let mut client = EventSourcedClient::connect("http://[::1]:8088").await?;
+    let mut client = EventSourcedClient::connect("http://127.0.0.1:8088").await?;
 
     use protocols::example::shoppingcart::persistence::*;
 

@@ -174,6 +174,7 @@ pub trait EventSourcedEntity {
         }
     }
 
+    //TODO consider changing the signature to return emitted events, error, or effects explicitly without using the context
     fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>);
 
     fn handle_event(&mut self, event: Self::Event);

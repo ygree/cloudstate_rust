@@ -13,6 +13,14 @@ Run client:
 cargo run --bin spike-client
 ```
 
+### Running TCK
+
+Use `github.com/cloudstateio/cloudstate`
+
+Set rust's frontend implementation in: `tck/src/it/resources/application.conf`
+
+Run tests with: `sbt tck/it:test`
+
 
 ### gRPC client
 
@@ -39,7 +47,7 @@ Entity implementation.
 - [x] Add shopping_cart proto files to the project and generate Rust files.
     - [x] Generate proto classes out to the crates to navigate to in the IDE.
 
-- [ ] Verify type name for incoming commands that are encoded as Any type
+- [x] Verify type name for incoming commands that are encoded as Any type
 
     - [x] Had an idea to try until succeed but it won't work because deserialization may work for a wrong type, e.g. RemoveLine instead of AddLine
         That's because the RemoteLine has a subset of AddLine's fields.
@@ -109,11 +117,11 @@ A spike version of Cloudstate client application.
     
 - [ ] Implement test that runs the server and test it with a client
 
-- [ ] Bind EventSourced service to the ShopCart entity manually
-
-- [ ] Implement intermediate abstractions for binding an Entity to the server
+- [x] Implement intermediate abstractions for binding an Entity to the server
+    Bare minimum, to be able to forward requests to the entities.
 
 - [ ] Test with Cloudstate TCK
+    - [ ] Implement discovery service. TCK Relies on discovery service implementation.
 
 - [ ] Write documentation
 
