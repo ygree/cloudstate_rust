@@ -10,7 +10,7 @@ cargo run --example shopping_cart
 
 Run client:
 ```
-cargo run --bin spike-client
+cargo run --example client
 ```
 
 ### Running TCK
