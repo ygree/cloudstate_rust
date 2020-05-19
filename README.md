@@ -120,8 +120,18 @@ A spike version of Cloudstate client application.
 - [x] Implement intermediate abstractions for binding an Entity to the server
     Bare minimum, to be able to forward requests to the entities.
 
-- [ ] Test with Cloudstate TCK
-    - [ ] Implement discovery service. TCK Relies on discovery service implementation.
+- [x] Test with Cloudstate TCK
+    cloudstate:rust-tck-test
+    tck/it:test
+
+- [x] Implement stub version of the `entity_discovery_server` service. TCK Relies on discovery service implementation.
+
+- [ ] Preserve service protobuf and return on the discovery call to solve:
+    ---> EntityDiscovery.report_error: error = UserFunctionError { message: "Service [com.example.shoppingcart.ShoppingCart] not found in descriptors!" }
+
+        
+        
+- [ ] Integrate into Cloudstate TCK        
 
 - [ ] Write documentation
 

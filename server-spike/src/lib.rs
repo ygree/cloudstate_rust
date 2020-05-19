@@ -1,9 +1,11 @@
-
-use protocols::protocol::cloudstate::eventsourced::{
+use protocols::protocol::cloudstate::{eventsourced::{
     EventSourcedStreamIn, EventSourcedStreamOut, EventSourcedReply,
     event_sourced_stream_in, event_sourced_stream_out,
-    event_sourced_server::EventSourced
-};
+    event_sourced_server::EventSourced,
+}, entity_discovery_server::{
+    EntityDiscovery,
+    EntityDiscoveryServer,
+}, ProxyInfo, EntitySpec, UserFunctionError, Entity, ServiceInfo};
 use tonic::{Status, Streaming, Response, Request};
 use std::pin::Pin;
 // use futures_core::Stream; // TODO: it caused compile issues
@@ -50,6 +52,45 @@ impl EntityRegistry {
             }
         }
         return None;
+    }
+}
+
+pub struct EntityDiscoveryServerImpl;
+
+#[tonic::async_trait]
+impl EntityDiscovery for EntityDiscoveryServerImpl {
+
+    async fn discover(&self, request: Request<ProxyInfo>) -> Result<Response<EntitySpec>, Status> {
+        let info = request.into_inner();
+        println!("---> EntityDiscovery.discover : request.message = {:?}", info);
+
+        let reply = EntitySpec {
+            proto: vec![],
+            entities: vec![
+                Entity {
+                    entity_type: "cloudstate.eventsourced.EventSourced".to_owned(),
+                    service_name: "com.example.shoppingcart.ShoppingCart".to_owned(), //TODO ???
+                    persistence_id: "shopping_cart".to_owned(),
+                }
+            ],
+            service_info: Some(
+                ServiceInfo {
+                    service_name: "shopping-cart".to_owned(), //TODO should be provided from the service builder / descriptor
+                    service_version: "0.1".to_owned(),
+                    service_runtime: "rustc 1.43.0 (4fb7144ed 2020-04-20)".to_owned(), //TODO use rust version
+                    support_library_name: "cloudstate".to_owned(),
+                    support_library_version: "0.1".to_owned(), //TODO use version of the library
+                }
+            ),
+        };
+
+        Ok(Response::new(reply))
+    }
+
+    async fn report_error(&self, request: Request<UserFunctionError>) -> Result<Response<()>, Status> {
+        println!("---> EntityDiscovery.report_error: error = {:?}", request.into_inner());
+
+        Ok(Response::new(()))
     }
 }
 

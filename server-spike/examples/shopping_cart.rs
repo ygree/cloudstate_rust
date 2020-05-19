@@ -3,13 +3,16 @@ use ::prost::Message;
 use bytes::Bytes;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use protocols::protocol::cloudstate::eventsourced::event_sourced_server::EventSourcedServer;
+use protocols::protocol::cloudstate::{
+    entity_discovery_server::EntityDiscoveryServer,
+    eventsourced::event_sourced_server::EventSourcedServer,
+};
 use tonic::transport::Server;
 use protocols::example::shoppingcart::{
     AddLineItem, RemoveLineItem, GetShoppingCart,
     persistence::{Cart, ItemAdded, ItemRemoved, LineItem}
 };
-use server_spike::{EventSourcedEntity, CommandDecoder, HandleCommandContext, EntityRegistry, EventSourcedServerImpl};
+use server_spike::{EventSourcedEntity, CommandDecoder, HandleCommandContext, EntityRegistry, EntityDiscoveryServerImpl, EventSourcedServerImpl};
 use command_macro_derive::CommandDecoder;
 
 #[tokio::main]
@@ -24,9 +27,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let server = EventSourcedServerImpl(Arc::new(registry));
 
-    let svc = EventSourcedServer::new(server);
+    let discovery = EntityDiscoveryServer::new(EntityDiscoveryServerImpl);
+    let eventsourced = EventSourcedServer::new(server);
 
-    Server::builder().add_service(svc).serve(addr).await?;
+    Server::builder()
+        .add_service(discovery)
+        .add_service(eventsourced)
+        .serve(addr).await?;
 
     Ok(())
 }
