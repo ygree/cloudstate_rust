@@ -126,6 +126,13 @@ A spike version of Cloudstate client application.
 
 - [x] Implement stub version of the `entity_discovery_server` service. TCK Relies on discovery service implementation.
 
+- [ ] Discovery server implementation requires generation protobuf descriptors
+    It turns out that PROST! doesn't support it at all! (https://github.com/danburkert/prost#prost)
+    Also, it doesn't support protobuf Any type serialization and there seem to be no way to extract package name that is needed for Any type (de)serialization.
+    
+- [ ] Try [rust-protobuf](https://github.com/stepancheg/rust-protobuf)
+    Find out how to generate a gRPC server implementation or if it's possible to use PROTOC! for Cloudstate parts and Rust-Protobuf for user defined services and messages.
+
 - [ ] Preserve service protobuf and return on the discovery call to solve:
     ---> EntityDiscovery.report_error: error = UserFunctionError { message: "Service [com.example.shoppingcart.ShoppingCart] not found in descriptors!" }
 

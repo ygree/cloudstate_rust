@@ -65,7 +65,7 @@ impl EntityDiscovery for EntityDiscoveryServerImpl {
         println!("---> EntityDiscovery.discover : request.message = {:?}", info);
 
         let reply = EntitySpec {
-            proto: vec![],
+            proto: vec![], //TODO should be generated
             entities: vec![
                 Entity {
                     entity_type: "cloudstate.eventsourced.EventSourced".to_owned(),
