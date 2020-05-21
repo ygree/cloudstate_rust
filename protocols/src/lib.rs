@@ -8,10 +8,19 @@ pub mod protocol {
 }
 
 pub mod example {
+    // protobuf
+
+    pub mod shoppingcart;
+    pub mod domain;
+}
+
+pub mod prost_example {
+    // prost
+
     pub mod shoppingcart {
-        include!("example/shoppingcart/com.example.shoppingcart.rs");
+        include!("prost_example/shoppingcart/com.example.shoppingcart.rs");
         pub mod persistence {
-            include!("example/shoppingcart/com.example.shoppingcart.persistence.rs");
+            include!("prost_example/shoppingcart/com.example.shoppingcart.persistence.rs");
         }
     }
 }

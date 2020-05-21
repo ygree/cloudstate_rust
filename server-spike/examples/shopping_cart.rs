@@ -1,5 +1,4 @@
 
-use ::prost::Message;
 use bytes::Bytes;
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -8,12 +7,13 @@ use protocols::protocol::cloudstate::{
     eventsourced::event_sourced_server::EventSourcedServer,
 };
 use tonic::transport::Server;
-use protocols::example::shoppingcart::{
-    AddLineItem, RemoveLineItem, GetShoppingCart,
-    persistence::{Cart, ItemAdded, ItemRemoved, LineItem}
+use protocols::example::{
+    shoppingcart::{AddLineItem, RemoveLineItem, GetShoppingCart},
+    domain::{Cart, ItemAdded, ItemRemoved, LineItem},
 };
 use server_spike::{EventSourcedEntity, CommandDecoder, HandleCommandContext, EntityRegistry, EntityDiscoveryServerImpl, EventSourcedServerImpl};
 use command_macro_derive::CommandDecoder;
+use protobuf::SingularPtrField;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -76,14 +76,16 @@ impl EventSourcedEntity for ShoppingCartEntity {
                 context.emit_event(
                     //TODO looks like too much boilerplate
                     ShoppingCartEvent::ItemAdded(
-                        ItemAdded { //TODO maybe implement auto-conversion for: ItemAdded -> ShoppingCartEvent::ItemAdded
-                            item: Some(
+                        ItemAdded {
+                            item: SingularPtrField::some(
                                 LineItem {
-                                    product_id: item.product_id,
+                                    productId: item.product_id,
                                     name: item.name,
                                     quantity: item.quantity,
+                                    ..Default::default()
                                 }
-                            )
+                            ),
+                            ..Default::default()
                         }
                     )
                 );
@@ -101,7 +103,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
         match event {
             ShoppingCartEvent::ItemAdded(item_added) => {
                 println!("Handle event: {:?}", item_added);
-                if let Some(item) = item_added.item {
+                if let Some(item) = item_added.item.into_option() {
                     self.0.items.push(item);
                 }
             },

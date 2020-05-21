@@ -26,7 +26,7 @@ fn main() {
         //  error: macro attributes must be placed before `#[derive]`
         //  Consider submit a PR for tonic-build or to prost
         // .type_attribute("com.example.shoppingcart.AddLineItem", "#[proto_type_macro::proto_type]")
-        .out_dir("src/example/shoppingcart")
+        .out_dir("src/prost_example/shoppingcart")
         .compile(&[
             "example/shoppingcart/persistence/domain.proto",
             "example/shoppingcart/shoppingcart.proto",
@@ -35,6 +35,20 @@ fn main() {
             "frontend",
         ])
         .expect("failed to compile protos");
-
     //TODO implement a custom ServiceGenerator to generate service specific command types with access to package name for unmarshaling code generation.
+
+
+    // Generate Rust code for the user service messages with rust `protobuf` instead of `prost`.
+    protobuf_codegen_pure::Codegen::new()
+        .out_dir("src/example")
+        .inputs(&[
+            "example/shoppingcart/persistence/domain.proto",
+            "example/shoppingcart/shoppingcart.proto",
+        ])
+        .includes(&[
+            "example",
+            "frontend",
+            ".", // needed for google any/descriptor/empty
+        ]).run().expect("protoc");
+
 }

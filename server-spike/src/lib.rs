@@ -171,7 +171,7 @@ impl<T> HandleCommandContext for CommandHandlerContext<T> {
 pub trait EventSourcedEntity {
 
     // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
-    type Snapshot : ::prost::Message + Default;
+    type Snapshot : ::protobuf::Message + Default;
     type Command : CommandDecoder;
     type Event;
 
@@ -190,10 +190,9 @@ pub trait EventSourcedEntity {
         }
     }
 
-    fn decode_snapshot(&self, bytes: Bytes) -> Result<Self::Snapshot, DecodeError> {
+    fn decode_snapshot(&self, bytes: Bytes) -> Result<Self::Snapshot, ProtobufError> {
         // default implementation that can be overridden if needed
-        // Self::Snapshot::decode(bytes)
-        <Self::Snapshot as Message>::decode(bytes) // explicitly call a trait's associated method
+        protobuf::parse_from_carllerche_bytes::<Self::Snapshot>(&bytes)
     }
 
     // should be private
@@ -238,9 +237,9 @@ impl<T> EventSourcedEntityHandler for T
     }
 }
 
-use prost::{DecodeError, Message};
 use std::sync::Arc;
 use std::marker::PhantomData;
+use protobuf::ProtobufError;
 
 pub trait CommandDecoder : Sized {
     fn decode(type_url: String, bytes: Bytes) -> Option<Self>;

@@ -100,7 +100,8 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
         let full_type = format!("type.googleapis.com/{}.{}", protobuf_packet.0, &field_id.to_string());
         quote!(
             #full_type => {
-                match <#field_id as Message>::decode(bytes) {
+                // match <#field_id as Message>::decode(bytes) {
+                match protobuf::parse_from_carllerche_bytes::<#field_id>(&bytes) {
                     Ok(cmd) => {
                         println!("Received {:?}", cmd);
                         Some(#type_name::#enum_id(cmd))

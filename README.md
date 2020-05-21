@@ -127,16 +127,32 @@ A spike version of Cloudstate client application.
 - [x] Implement stub version of the `entity_discovery_server` service. TCK Relies on discovery service implementation.
 
 - [ ] Discovery server implementation requires generation protobuf descriptors
-    It turns out that PROST! doesn't support it at all! (https://github.com/danburkert/prost#prost)
-    Also, it doesn't support protobuf Any type serialization and there seem to be no way to extract package name that is needed for Any type (de)serialization.
     
-- [ ] Try [rust-protobuf](https://github.com/stepancheg/rust-protobuf)
-    Find out how to generate a gRPC server implementation or if it's possible to use PROTOC! for Cloudstate parts and Rust-Protobuf for user defined services and messages.
-
 - [ ] Preserve service protobuf and return on the discovery call to solve:
     ---> EntityDiscovery.report_error: error = UserFunctionError { message: "Service [com.example.shoppingcart.ShoppingCart] not found in descriptors!" }
+    Unfortunately, Prost! doesn't support protobuf descriptors at all! 
+    Also, it doesn't support protobuf Any type serialization and there seem to be no way to extract package name that is needed for Any type (de)serialization.
+    
+    Try to use `rust-protobuf` for the user service protobuf messages and descriptors generation and for the gRPC implementation use `prost`?
 
+- [x] Try [rust-protobuf](https://github.com/stepancheg/rust-protobuf)
+    Find out how to generate a gRPC server implementation or if it's possible to use PROTOC! for Cloudstate parts and Rust-Protobuf for user defined services and messages.
+
+    Generate Rust code for the user service messages with rust `protobuf` instead of `prost`.
+    
+    - [-] How to remove inner attributes out of generated files? They are not compiled with the current version of Rust.
+        No, need to remove it. It was complaining because of include! macro, once import generated files as simple modules it all works.
+    
+    - [x] Need to adapt the current CommandDecoder implementation to use `protobuf`. Currently it relies on  prost::message::Message
+        Done. Tests are failing because error don't exactly match. Need to find a better way to make it less fragile.
         
+    Successfully migrated to the protobuf for the main code, and the shopping_cart.rs example. The client.rs examples is still using prost!.
+    
+    - [ ] Leverage Any protobuf type support
+    - [ ] Leverage FileDescriptors to implement Discovery server
+
+- [ ] command-macro-derive tests are fragile because they match exact compilation error and it depends on the `server-spike` module that makes it very fragile. The only need for the dependency is the CommandDecoder trait. Moving it to more stable crate should resolve this issue.
+    
         
 - [ ] Integrate into Cloudstate TCK        
 

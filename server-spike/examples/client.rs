@@ -7,7 +7,10 @@ use protocols::protocol::cloudstate::{
         event_sourced_client::{EventSourcedClient}
     },
 };
-use protocols::example::shoppingcart::AddLineItem;
+use protocols::prost_example::shoppingcart::{
+    AddLineItem,
+    persistence::*,
+};
 use ::prost_types::Any;
 
 fn create_any(type_url: String, msg: impl ::prost::Message) -> ::prost_types::Any {
@@ -24,8 +27,6 @@ fn create_any(type_url: String, msg: impl ::prost::Message) -> ::prost_types::An
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let mut client = EventSourcedClient::connect("http://[::1]:8088").await?;
     let mut client = EventSourcedClient::connect("http://127.0.0.1:8088").await?;
-
-    use protocols::example::shoppingcart::persistence::*;
 
     let item1 = LineItem {
         product_id: "soap33".to_string(),
@@ -55,6 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         product_id: "product_id".to_owned(),
         name: "Product Name".to_owned(),
         quantity: 1,
+        ..Default::default()
     };
 
     let cmd_msg = Message::Command(Command {
