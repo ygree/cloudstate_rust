@@ -150,6 +150,14 @@ A spike version of Cloudstate client application.
     
     - [ ] Leverage Any protobuf type support
     - [ ] Leverage FileDescriptors to implement Discovery server
+    
+        Generated file descriptor (example/shoppingcart.rs:1089) doesn't seem to contain any service descriptor!
+
+        //TODO: Try to generate file descriptor properly. Should be possible to do with protoc or protobuf_codegen_pure
+        // https://github.com/stepancheg/rust-protobuf/issues/292#issuecomment-392607319
+        
+        :WIP: trying to implement a file descriptor required for the incoming discovery call to send back to proxy.
+    
 
 - [ ] command-macro-derive tests are fragile because they match exact compilation error and it depends on the `server-spike` module that makes it very fragile. The only need for the dependency is the CommandDecoder trait. Moving it to more stable crate should resolve this issue.
     

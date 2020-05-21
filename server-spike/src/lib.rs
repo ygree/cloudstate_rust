@@ -64,8 +64,47 @@ impl EntityDiscovery for EntityDiscoveryServerImpl {
         let info = request.into_inner();
         println!("---> EntityDiscovery.discover : request.message = {:?}", info);
 
+        let fd = protocols::example::shoppingcart::file_descriptor_proto();
+        let services: &[ServiceDescriptorProto] = fd.get_service();
+
+        println!("---> service : {:?}", services[0].get_name()); //TODO: BOOM! it's empty!
+        //TODO: Try to generate file descriptor properly. Should be possible to do with protoc or protobuf_codegen_pure
+        // https://github.com/stepancheg/rust-protobuf/issues/292#issuecomment-392607319
+
+
+        //TODO see Java impl for reference: io.cloudstate.javasupport.impl.EntityDiscoveryImpl#discover
+
+        let mut ds = FileDescriptorSet::new();
+        ds.set_file(RepeatedField::from_vec(vec![fd.clone()])); //TODO set proper FileDescriptorProto-s
+
+        let ds_bytes: Result<Vec<u8>, _> = ds.write_to_bytes();
+
+
+        // services[0].cached_size
+
+        //TODO check that request.into_inner().supported_entity_types contains entity_type
+        // if not log an error
+
+        /*
+
+protoc --include_imports \
+    --proto_path=. \
+    --proto_path=protocol \
+    --proto_path=frontend \
+    --descriptor_set_out=user-function.desc \
+    example/shoppingcart/shoppingcart.proto
+
+protoc --proto_path=./ \
+    --proto_path=protocol \
+    --descriptor_set_out=user-function.desc \
+    example/shoppingcart/shoppingcart.proto
+
+         */
+
+
         let reply = EntitySpec {
-            proto: vec![], //TODO should be generated
+            // proto: descr.to_vec(), // what if we just send it as is? Nope: InvalidProtocolBufferException: While parsing a protocol message, the input ended unexpectedly in the middle of a field.
+            proto: ds_bytes.unwrap(), //TODO should be generated
             entities: vec![
                 Entity {
                     entity_type: "cloudstate.eventsourced.EventSourced".to_owned(),
@@ -239,7 +278,8 @@ impl<T> EventSourcedEntityHandler for T
 
 use std::sync::Arc;
 use std::marker::PhantomData;
-use protobuf::ProtobufError;
+use protobuf::{ProtobufError, RepeatedField, Message};
+use protobuf::descriptor::{ServiceDescriptorProto, FileDescriptorSet};
 
 pub trait CommandDecoder : Sized {
     fn decode(type_url: String, bytes: Bytes) -> Option<Self>;
