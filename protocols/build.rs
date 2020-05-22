@@ -39,7 +39,8 @@ fn main() {
 
 
     // Generate Rust code for the user service messages with rust `protobuf` instead of `prost`.
-    protobuf_codegen_pure::Codegen::new()
+    // protobuf_codegen_pure::Codegen::new()
+    protoc_rust::Codegen::new()
         .out_dir("src/example")
         .inputs(&[
             "example/shoppingcart/persistence/domain.proto",
@@ -48,6 +49,18 @@ fn main() {
         .includes(&[
             "example",
             "frontend",
+            ".", // needed for google any/descriptor/empty
+        ]).run().expect("protoc");
+
+    // generate google protobuf stuff for file descriptors
+    protoc_rust::Codegen::new()
+        .out_dir("src/google/protobuf")
+        .inputs(&[
+            "google/protobuf/empty.proto",
+        ])
+        .includes(&[
+            // "example",
+            // "frontend",
             ".", // needed for google any/descriptor/empty
         ]).run().expect("protoc");
 

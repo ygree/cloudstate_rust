@@ -555,13 +555,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "protobuf-codegen-pure"
+name = "protoc"
 version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d1a4febc73bf0cada1d77c459a0c8e5973179f1cfd5b0f1ab789d45b17b6440"
+checksum = "349d80967ee438cd03ccd236d548d4dcd5f2d9349acda206bef1490a826165d3"
+dependencies = [
+ "log",
+]
+
+[[package]]
+name = "protoc-rust"
+version = "2.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58f2fb1de3a1355b1eb91108bf59d6221c1f565eee9983605be53846019fdf38"
 dependencies = [
  "protobuf",
  "protobuf-codegen",
+ "protoc",
+ "tempfile",
 ]
 
 [[package]]
@@ -573,7 +584,7 @@ dependencies = [
  "prost",
  "prost-types",
  "protobuf",
- "protobuf-codegen-pure",
+ "protoc-rust",
  "rand",
  "serde",
  "serde_json",

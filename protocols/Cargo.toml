@@ -18,7 +18,10 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 rand = "0.7"
 protobuf = { version = "2", features = ["with-bytes"] }
+#protobuf = { git = "https://github.com/stepancheg/rust-protobuf" }
 
 [build-dependencies]
 tonic-build = "0.2"
-protobuf-codegen-pure = { version = "2" }
+#protobuf-codegen-pure = { version = "2" }
+#protobuf-codegen-pure = { git = "https://github.com/stepancheg/rust-protobuf" }
+protoc-rust = { version = "2" }

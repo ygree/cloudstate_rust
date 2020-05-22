@@ -14,6 +14,12 @@ pub mod example {
     pub mod domain;
 }
 
+pub mod google {
+    pub mod protobuf {
+        pub mod empty;
+    }
+}
+
 pub mod prost_example {
     // prost
 

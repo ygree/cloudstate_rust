@@ -74,8 +74,11 @@ impl EntityDiscovery for EntityDiscoveryServerImpl {
 
         //TODO see Java impl for reference: io.cloudstate.javasupport.impl.EntityDiscoveryImpl#discover
 
+        // Try to resolve: Descriptor dependency [google/protobuf/empty.proto] not found, dependency path: [shoppingcart/shoppingcart.proto]
+        let empty_fd = protocols::google::protobuf::empty::file_descriptor_proto();
+
         let mut ds = FileDescriptorSet::new();
-        ds.set_file(RepeatedField::from_vec(vec![fd.clone()])); //TODO set proper FileDescriptorProto-s
+        ds.set_file(RepeatedField::from_vec(vec![fd.clone(), empty_fd.clone()])); //TODO set proper FileDescriptorProto-s
 
         let ds_bytes: Result<Vec<u8>, _> = ds.write_to_bytes();
 

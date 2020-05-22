@@ -157,7 +157,46 @@ A spike version of Cloudstate client application.
         // https://github.com/stepancheg/rust-protobuf/issues/292#issuecomment-392607319
         
         :WIP: trying to implement a file descriptor required for the incoming discovery call to send back to proxy.
-    
+        
+        In Prost! there is a relatively fresh PR for adding file descriptor support: https://github.com/danburkert/prost/pull/311.
+        Unfortunately, the PR was closed with the proposal to use include_byte! to import generated FileDescriptor.
+
+        Well. Looks like in `progobuf-codegen-pure-2.14.0` it skips parsing services in `parser.rs`:
+            if let Some(_service) = self.next_service_opt()? {
+                continue;
+            }
+        but in `master` it's implemented: https://github.com/stepancheg/rust-protobuf/blob/9498605ac57708a022ad8398286d8a86e7146ca9/protobuf-codegen-pure/src/parser.rs#L1091
+
+        There should be a way to use master branch as a dependency.
+        protobuf = { git = "https://github.com/stepancheg/rust-protobuf" }
+        protobuf-codegen-pure = { git = "https://github.com/stepancheg/rust-protobuf" }
+        But it didn't work either. The generated code isn't different from the 2.14.0 and `file_descriptor_proto_data` didn't contain service descriptors.
+        
+        Try to use `protoc-rust = { version = "2" }`
+        Woot! It generates larger `file_descriptor_proto_data` that probably contains the service descriptor.
+        Let's try it with TCK.
+        
+        Woot! The TCK can see the `ShoppingCart` service now. 
+        ---> EntityDiscovery.discover : request.message = ProxyInfo { protocol_major_version: 0, protocol_minor_version: 1, proxy_name: "cloudstate-proxy-core", proxy_version: "0.4.1-200-254ed387", supported_entity_types: ["cloudstate.crdt.Crdt", "cloudstate.function.StatelessFunction", "cloudstate.eventsourced.EventSourced"] }
+        ---> service : "ShoppingCart" 
+        
+        But it fails because of incomplete file descriptor.
+        2020-05-22 00:01:31.285 ERROR akka.actor.OneForOneStrategy - Descriptor dependency [google/protobuf/empty.proto] not found, dependency path: [shoppingcart/shoppingcart.proto]
+        
+        Try to add empty's descriptor as well.
+        Okay, now it wants yet another descriptor:  
+        Descriptor dependency [cloudstate/entity_key.proto] not found, dependency path: [shoppingcart/shoppingcart.proto]
+        
+        - [ ] Maybe it's easier to use `protoc` to generate one file and use `include_bytes!` then. How?
+        
+            protoc --proto_path=./ \
+                --proto_path=protocol \
+                --descriptor_set_out=user-function.desc \
+                example/shoppingcart/shoppingcart.proto
+        
+        
+        
+            
 
 - [ ] command-macro-derive tests are fragile because they match exact compilation error and it depends on the `server-spike` module that makes it very fragile. The only need for the dependency is the CommandDecoder trait. Moving it to more stable crate should resolve this issue.
     
