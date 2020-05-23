@@ -43,7 +43,7 @@ Entity implementation.
         - [x] Provide the type name as an attribute, so the derive macro can use it.
             That's currently the only possible solution that can be replaced in the future if needed and it can also coexist with other solutions.
             
-    - [x] Implement correct type matching in `command_macro_derive`
+    - [x] Implement correct type matching in `cloudstate_prost_derive`
 
      * final val DefaultTypeUrlPrefix = "type.googleapis.com"
 

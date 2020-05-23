@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 cloudstate-core = { path = "../cloudstate-core" }
 cloudstate-protobuf-derive = { path = "../cloudstate-protobuf-derive" }
-command-macro-derive = { path = "../command-macro-derive" }
+cloudstate-prost-derive = { path = "../cloudstate-prost-derive" }
 protocols = { path = "../protocols" }
 tonic = "0.2"
 prost = "0.6"

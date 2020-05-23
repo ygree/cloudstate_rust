@@ -1,4 +1,4 @@
-use command_macro_derive::CommandDecoder;
+use cloudstate_prost_derive::CommandDecoder;
 
 mod shopping_cart;
 use shopping_cart::*;

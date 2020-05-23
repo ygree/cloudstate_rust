@@ -76,6 +76,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "cloudstate-prost-derive"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "cloudstate-core",
+ "proc-macro2",
+ "prost",
+ "quote",
+ "syn",
+ "trybuild",
+]
+
+[[package]]
 name = "cloudstate-protobuf-derive"
 version = "0.1.0"
 dependencies = [
@@ -85,20 +99,6 @@ dependencies = [
  "proc-macro2",
  "prost",
  "protobuf",
- "quote",
- "syn",
- "trybuild",
-]
-
-[[package]]
-name = "command-macro-derive"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytes",
- "cloudstate-core",
- "proc-macro2",
- "prost",
  "quote",
  "syn",
  "trybuild",
@@ -743,8 +743,8 @@ dependencies = [
  "async-stream",
  "bytes",
  "cloudstate-core",
+ "cloudstate-prost-derive",
  "cloudstate-protobuf-derive",
- "command-macro-derive",
  "futures",
  "prost",
  "prost-types",

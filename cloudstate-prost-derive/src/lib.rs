@@ -6,7 +6,7 @@ use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
 
 #[proc_macro_derive(CommandDecoder, attributes(package))]
-pub fn command_macro_derive(input: TokenStream) -> TokenStream {
+pub fn cloudstate_prost_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     impl_command_macro(&ast)
 }

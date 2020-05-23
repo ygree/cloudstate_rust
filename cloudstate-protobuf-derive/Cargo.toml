@@ -24,7 +24,7 @@ anyhow = "1.0.30"
 [dev-dependencies]
 cloudstate-core = { path = "../cloudstate-core" }
 bytes = "0.5.4"
-prost = "0.6"
+prost = "0.6" #TODO should only depend on protobuf
 protobuf = { version = "2", features = ["with-bytes"] }
 trybuild = "1.0"
 

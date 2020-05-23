@@ -12,7 +12,7 @@ use protocols::prost_example::{
     persistence::{Cart, ItemAdded, ItemRemoved, LineItem},},
 };
 use server_spike::{EventSourcedEntity, CommandDecoder, HandleCommandContext, EntityRegistry, EntityDiscoveryServerImpl, EventSourcedServerImpl};
-use command_macro_derive::CommandDecoder;
+use cloudstate_prost_derive::CommandDecoder;
 use prost::Message;
 
 #[tokio::main]

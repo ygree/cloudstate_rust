@@ -1,5 +1,5 @@
 [package]
-name = "command-macro-derive"
+name = "cloudstate-prost-derive"
 version = "0.1.0"
 authors = ["Yury Gribkov <yury.gribkov@gmail.com>"]
 edition = "2018"
@@ -25,7 +25,6 @@ anyhow = "1.0.30"
 cloudstate-core = { path = "../cloudstate-core" }
 bytes = "0.5.4"
 prost = "0.6"
-#protobuf = { version = "2", features = ["with-bytes"] }
 trybuild = "1.0"
 
 
