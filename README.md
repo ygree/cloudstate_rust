@@ -160,6 +160,7 @@ A spike version of Cloudstate client application.
         
         In Prost! there is a relatively fresh PR for adding file descriptor support: https://github.com/danburkert/prost/pull/311.
         Unfortunately, the PR was closed with the proposal to use include_byte! to import generated FileDescriptor.
+        Well, there is new superseded PR has been open: https://github.com/danburkert/prost/pull/326.
 
         Well. Looks like in `progobuf-codegen-pure-2.14.0` it skips parsing services in `parser.rs`:
             if let Some(_service) = self.next_service_opt()? {
@@ -194,9 +195,28 @@ A spike version of Cloudstate client application.
                 --descriptor_set_out=user-function.desc \
                 example/shoppingcart/shoppingcart.proto
         
-        
-        
-            
+https://github.com/danburkert/prost/pull/326/files#diff-eb205fd0a0569ec3478a1f78f1df4ec3R537-R541        
+```rust
+let mut cmd = Command::new(protoc());
+cmd.arg("--include_imports")
+    .arg("--include_source_info")
+    .arg("-o")
+    .arg(&descriptor_set);
+```
+
+Okay. This seems to work with the fix in `annotations.proto` to point to `google/protobuf/descriptor.proto` instead of `google/proto/descriptor.proto`.
+
+```bash
+protoc --proto_path=./ \
+    --proto_path=./frontend/ \
+    --include_imports \
+    -o out.desc \
+    example/shoppingcart/shoppingcart.proto \
+    example/shoppingcart/persistence/domain.proto
+```
+
+See `protocols/generate_desc`
+
 
 - [ ] command-macro-derive tests are fragile because they match exact compilation error and it depends on the `server-spike` module that makes it very fragile. The only need for the dependency is the CommandDecoder trait. Moving it to more stable crate should resolve this issue.
     
