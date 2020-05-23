@@ -2,14 +2,14 @@ use protocols::protocol::cloudstate::{eventsourced::{
     EventSourcedStreamIn, EventSourcedStreamOut, EventSourcedReply,
     event_sourced_stream_in, event_sourced_stream_out,
     event_sourced_server::EventSourced,
-}, entity_discovery_server::{
-    EntityDiscovery,
-}, ProxyInfo, EntitySpec, UserFunctionError, Entity, ServiceInfo};
+}, entity_discovery_server::EntityDiscovery, ProxyInfo, EntitySpec, UserFunctionError, Entity, ServiceInfo};
 use tonic::{Status, Streaming, Response, Request};
 use std::pin::Pin;
 // use futures_core::Stream; // TODO: it caused compile issues
 use futures::Stream;
 use bytes::Bytes;
+use std::sync::Arc;
+use std::marker::PhantomData;
 
 pub type MaybeEntityHandler = Option<Box<dyn EventSourcedEntityHandler + Send + Sync>>;
 
@@ -173,32 +173,25 @@ impl<T> HandleCommandContext for CommandHandlerContext<T> {
 }
 
 // this is typed entity handler interface to be implemented by user
-// NOTE: it can't be used by the server side because it has associated types
+// NOTE: it can't be used by the server side as is because it has associated types.
+//  Such traits can't be used as trait objects.
 pub trait EventSourcedEntity {
 
     // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
-    type Snapshot : ::protobuf::Message + Default;
+    type Snapshot : CommandDecoder;
     type Command : CommandDecoder;
     type Event;
 
     fn restore(&mut self, snapshot: Self::Snapshot);
 
     // This method is called by server and need to bind to the entity typed and delegate call to the user implementation
-    fn snapshot_received(&mut self, _type_url: String, bytes: Bytes) {
-        match self.decode_snapshot(bytes) {
-            Ok(snapshot) => {
-                println!("Decoded: {:?}", snapshot);
-                self.restore(snapshot);
-            }
-            Err(_err) => {
-                eprintln!("Couldn't decode snapshot!");
-            },
+    fn snapshot_received(&mut self, type_url: String, bytes: Bytes) {
+        if let Some(snapshot) = <Self::Snapshot as CommandDecoder>::decode(type_url, bytes) {
+            println!("Received snapshot!");
+            self.restore(snapshot);
+        } else {
+            eprintln!("Couldn't decode snapshot!");
         }
-    }
-
-    fn decode_snapshot(&self, bytes: Bytes) -> Result<Self::Snapshot, ProtobufError> {
-        // default implementation that can be overridden if needed
-        protobuf::parse_from_carllerche_bytes::<Self::Snapshot>(&bytes)
     }
 
     // should be private
@@ -242,10 +235,6 @@ impl<T> EventSourcedEntityHandler for T
         self.command_received(type_url, bytes)
     }
 }
-
-use std::sync::Arc;
-use std::marker::PhantomData;
-use protobuf::ProtobufError;
 
 pub trait CommandDecoder : Sized {
     fn decode(type_url: String, bytes: Bytes) -> Option<Self>;

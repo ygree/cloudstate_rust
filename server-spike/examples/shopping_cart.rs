@@ -57,18 +57,26 @@ pub enum ShoppingCartEvent {
     ItemRemoved(ItemRemoved),
 }
 
+// Snapshot
+#[derive(CommandDecoder)]
+#[package="com.example.shoppingcart.persistence"]
+pub enum ShoppingCartSnapshot {
+    Snapshot(Cart),
+}
+
 #[derive(Default)]
 //TODO use more convenient type for internal state, e.g. HashMap
 pub struct ShoppingCartEntity(Cart);
 
 impl EventSourcedEntity for ShoppingCartEntity {
 
-    type Snapshot = Cart;
+    type Snapshot = ShoppingCartSnapshot;
     type Command = ShoppingCartCommand;
     type Event = ShoppingCartEvent;
 
     fn restore(&mut self, snapshot: Self::Snapshot) {
-        self.0 = snapshot;
+        let ShoppingCartSnapshot::Snapshot(cart) = snapshot;
+        self.0 = cart;
         println!("Snapshot Loaded: {:?}", self.0);
     }
 
