@@ -11,9 +11,11 @@ use protocols::prost_example::{
     shoppingcart::{AddLineItem, RemoveLineItem, GetShoppingCart,
     persistence::{Cart, ItemAdded, ItemRemoved, LineItem},},
 };
-use server_spike::{EventSourcedEntity, CommandDecoder, HandleCommandContext, EntityRegistry, EntityDiscoveryServerImpl, EventSourcedServerImpl};
-use cloudstate_prost_derive::CommandDecoder;
 use prost::Message;
+use cloudstate_prost_derive::CommandDecoder;
+use cloudstate_core::CommandDecoder;
+use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, HandleCommandContext};
+use server_spike::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -186,6 +186,12 @@ Actually, no fix needed. After I replaced proto files with ones from the cloudst
 
 See `protocols/generate_desc`
 
+### :DONE: extract all parts that don't depend on the gRPC implementation out to `cloudstate-core` module
+
+### :TODO: rename `CommandDecoder` to something more descriptive
+
+### :TODO: does `protobuf` provides a better way to get package name? 
+
 ### :TODO: Next TCK error
 
 init service: com.example.shoppingcart.ShoppingCart entity_id: testuser:1

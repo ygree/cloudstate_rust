@@ -7,3 +7,5 @@ pub trait CommandDecoder : Sized {
 
     // fn encode(&self) -> Option<(String, Bytes)>;
 }
+
+pub mod eventsourced;

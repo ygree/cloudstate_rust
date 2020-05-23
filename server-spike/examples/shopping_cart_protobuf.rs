@@ -11,9 +11,11 @@ use protocols::example::{
     shoppingcart::{AddLineItem, RemoveLineItem, GetShoppingCart},
     domain::{Cart, ItemAdded, ItemRemoved, LineItem},
 };
-use server_spike::{EventSourcedEntity, CommandDecoder, HandleCommandContext, EntityRegistry, EntityDiscoveryServerImpl, EventSourcedServerImpl};
 use cloudstate_protobuf_derive::CommandDecoder;
 use protobuf::SingularPtrField;
+use cloudstate_core::CommandDecoder;
+use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, HandleCommandContext};
+use server_spike::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

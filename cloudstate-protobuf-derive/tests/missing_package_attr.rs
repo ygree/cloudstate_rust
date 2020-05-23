@@ -1,6 +1,6 @@
 use ::prost::Message;
 use bytes::Bytes;
-use server_spike::CommandDecoder; //TODO should probably move this to a separate trait out of server_spike
+use cloudstate_core::CommandDecoder;
 use cloudstate_prost_derive::CommandDecoder;
 
 mod shopping_cart;
