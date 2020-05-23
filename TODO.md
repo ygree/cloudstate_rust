@@ -182,7 +182,14 @@ cmd.arg("--include_imports")
 Okay. This seems to work with the fix in `annotations.proto` to point to `google/protobuf/descriptor.proto` instead of `google/proto/descriptor.proto`.
 See `protocols/generate_desc`
 
+### :TODO: Next TCK error
 
+init service: com.example.shoppingcart.ShoppingCart entity_id: testuser:1
+Can't handle a command until the entity is initialized!
+Unexpected reply, had no current command: EventSourcedReply(1,None,Vector(),Vector(),None,UnknownFieldSet(Map()))
+
+
+### :TODO: provide file descriptor proto with the service description.
 
 ### :TODO: command-macro-derive tests are fragile because they match exact compilation error and it depends on the `server-spike` module that makes it very fragile. The only need for the dependency is the CommandDecoder trait. Moving it to more stable crate should resolve this issue.
     
