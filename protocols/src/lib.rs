@@ -14,7 +14,7 @@ pub mod example {
     pub mod domain;
 
     pub fn shopping_cart_descriptor_set() -> &'static [u8] {
-        include_bytes!("../shoppingcart.desc")
+        include_bytes!("shoppingcart.desc")
     }
 }
 

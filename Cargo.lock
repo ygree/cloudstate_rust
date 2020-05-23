@@ -614,6 +614,7 @@ dependencies = [
  "prost",
  "prost-types",
  "protobuf",
+ "protoc",
  "protoc-rust",
  "rand",
  "serde",

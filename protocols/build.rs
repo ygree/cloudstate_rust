@@ -1,5 +1,4 @@
 
-
 fn main() {
 
     tonic_build::configure()
@@ -64,4 +63,23 @@ fn main() {
             ".", // needed for google any/descriptor/empty
         ]).run().expect("protoc");
 
+
+    generate_example_file_descriptor_set();
+}
+
+fn generate_example_file_descriptor_set() {
+    let protoc = protoc::Protoc::from_env_path();
+    protoc.check().unwrap();
+    protoc.write_descriptor_set(protoc::DescriptorSetOutArgs {
+        out: "src/shoppingcart.desc",
+        includes: &[
+            "example",
+            "frontend",
+        ],
+        input: &[
+            "example/shoppingcart/persistence/domain.proto",
+            "example/shoppingcart/shoppingcart.proto",
+        ],
+        include_imports: true,
+    }).unwrap();
 }

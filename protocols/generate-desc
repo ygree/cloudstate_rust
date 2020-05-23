@@ -1,9 +1,11 @@
 #!/bin/sh
 
-# Generate file descriptor for shoppingcart example
+# Generate file descriptor for the shopping cart example
 # TODO do it in build.rs
+#   In Prost! there is a relatively fresh PR for adding file descriptor support: https://github.com/danburkert/prost/pull/326.
+# Meanwhile use protobuf library to generate it in `build.rs`
 
-OUTPUT_DESC=shoppingcart.desc
+OUTPUT_DESC=src/shoppingcart.desc
 
 protoc --proto_path=./ \
     --proto_path=./frontend/ \

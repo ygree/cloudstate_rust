@@ -24,4 +24,5 @@ protobuf = { version = "2", features = ["with-bytes"] }
 tonic-build = "0.2"
 #protobuf-codegen-pure = { version = "2" }
 #protobuf-codegen-pure = { git = "https://github.com/stepancheg/rust-protobuf" }
+protoc = { version = "2" }
 protoc-rust = { version = "2" }
