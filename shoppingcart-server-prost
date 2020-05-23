@@ -1,0 +1,3 @@
+#!/bin/sh
+
+cargo run --example shopping_cart_prost
