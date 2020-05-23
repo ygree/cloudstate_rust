@@ -13,7 +13,7 @@ pub mod example {
     pub mod shoppingcart;
     pub mod domain;
 
-    fn shopping_cart_descs() -> &'static [u8] {
+    pub fn shopping_cart_descriptor_set() -> &'static [u8] {
         include_bytes!("../shoppingcart.desc")
     }
 }

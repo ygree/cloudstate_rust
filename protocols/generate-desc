@@ -8,6 +8,6 @@ OUTPUT_DESC=shoppingcart.desc
 protoc --proto_path=./ \
     --proto_path=./frontend/ \
     --include_imports \
-    -o $OUTPUT_DESC \
+    --descriptor_set_out $OUTPUT_DESC \
     example/shoppingcart/shoppingcart.proto \
     example/shoppingcart/persistence/domain.proto

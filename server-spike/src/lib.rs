@@ -55,11 +55,8 @@ impl EntityRegistry {
     }
 }
 
-pub struct EntityDiscoveryServerImpl;
-
-fn shopping_cart_descs() -> &'static [u8] {
-    //TODO for now need to run `protocols/generate-desc` to generate it
-    include_bytes!("../../protocols/shoppingcart.desc")
+pub struct EntityDiscoveryServerImpl {
+    pub descriptor_set: Vec<u8>,
 }
 
 #[tonic::async_trait]
@@ -74,11 +71,8 @@ impl EntityDiscovery for EntityDiscoveryServerImpl {
         //TODO check that request.into_inner().supported_entity_types contains entity_type
         // if not log an error
 
-        //TODO get out of the service descriptor instead of hard-coding here
-        let file_descs = shopping_cart_descs().to_vec();
-
         let reply = EntitySpec {
-            proto: file_descs,
+            proto: self.descriptor_set.clone(),
             entities: vec![
                 Entity {
                     entity_type: "cloudstate.eventsourced.EventSourced".to_owned(),

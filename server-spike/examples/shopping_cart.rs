@@ -27,7 +27,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let server = EventSourcedServerImpl(Arc::new(registry));
 
-    let discovery = EntityDiscoveryServer::new(EntityDiscoveryServerImpl);
+    let discovery_server = EntityDiscoveryServerImpl {
+        descriptor_set: protocols::example::shopping_cart_descriptor_set().to_vec(),
+    };
+    let discovery = EntityDiscoveryServer::new(discovery_server);
     let eventsourced = EventSourcedServer::new(server);
 
     Server::builder()
