@@ -190,6 +190,8 @@ See `protocols/generate_desc`
 
 ### :TODO: rename `CommandDecoder` to something more descriptive
 
+### :TODO: introduce a builder for service discovery 
+
 ### :TODO: does `protobuf` provides a better way to get package name? 
 
 ### :TODO: Next TCK error
