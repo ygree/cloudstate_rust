@@ -162,7 +162,7 @@ Try to add empty's descriptor as well.
 Okay, now it wants yet another descriptor:  
 Descriptor dependency [cloudstate/entity_key.proto] not found, dependency path: [shoppingcart/shoppingcart.proto]
 
-#### :TODO: Maybe it's easier to use `protoc` to generate one file and use `include_bytes!` then. How?
+#### :DONE: Maybe it's easier to use `protoc` to generate one file and use `include_bytes!` then. How?
 
 protoc --proto_path=./ \
     --proto_path=protocol \

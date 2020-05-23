@@ -57,6 +57,11 @@ impl EntityRegistry {
 
 pub struct EntityDiscoveryServerImpl;
 
+fn shopping_cart_descs() -> &'static [u8] {
+    //TODO for now need to run `protocols/generate-desc` to generate it
+    include_bytes!("../../protocols/shoppingcart.desc")
+}
+
 #[tonic::async_trait]
 impl EntityDiscovery for EntityDiscoveryServerImpl {
 
@@ -64,50 +69,16 @@ impl EntityDiscovery for EntityDiscoveryServerImpl {
         let info = request.into_inner();
         println!("---> EntityDiscovery.discover : request.message = {:?}", info);
 
-        let fd = protocols::example::shoppingcart::file_descriptor_proto();
-        let services: &[ServiceDescriptorProto] = fd.get_service();
-
-        println!("---> service : {:?}", services[0].get_name()); //TODO: BOOM! it's empty!
-        //TODO: Try to generate file descriptor properly. Should be possible to do with protoc or protobuf_codegen_pure
-        // https://github.com/stepancheg/rust-protobuf/issues/292#issuecomment-392607319
-
-
         //TODO see Java impl for reference: io.cloudstate.javasupport.impl.EntityDiscoveryImpl#discover
-
-        // Try to resolve: Descriptor dependency [google/protobuf/empty.proto] not found, dependency path: [shoppingcart/shoppingcart.proto]
-        let empty_fd = protocols::google::protobuf::empty::file_descriptor_proto();
-
-        let mut ds = FileDescriptorSet::new();
-        ds.set_file(RepeatedField::from_vec(vec![fd.clone(), empty_fd.clone()])); //TODO set proper FileDescriptorProto-s
-
-        let ds_bytes: Result<Vec<u8>, _> = ds.write_to_bytes();
-
-
-        // services[0].cached_size
 
         //TODO check that request.into_inner().supported_entity_types contains entity_type
         // if not log an error
 
-        /*
-
-protoc --include_imports \
-    --proto_path=. \
-    --proto_path=protocol \
-    --proto_path=frontend \
-    --descriptor_set_out=user-function.desc \
-    example/shoppingcart/shoppingcart.proto
-
-protoc --proto_path=./ \
-    --proto_path=protocol \
-    --descriptor_set_out=user-function.desc \
-    example/shoppingcart/shoppingcart.proto
-
-         */
-
+        //TODO get out of the service descriptor instead of hard-coding here
+        let file_descs = shopping_cart_descs().to_vec();
 
         let reply = EntitySpec {
-            // proto: descr.to_vec(), // what if we just send it as is? Nope: InvalidProtocolBufferException: While parsing a protocol message, the input ended unexpectedly in the middle of a field.
-            proto: ds_bytes.unwrap(), //TODO should be generated
+            proto: file_descs,
             entities: vec![
                 Entity {
                     entity_type: "cloudstate.eventsourced.EventSourced".to_owned(),
