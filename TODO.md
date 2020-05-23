@@ -180,6 +180,8 @@ cmd.arg("--include_imports")
 ```
 
 Okay. This seems to work with the fix in `annotations.proto` to point to `google/protobuf/descriptor.proto` instead of `google/proto/descriptor.proto`.
+Actually, no fix needed. After I replaced proto files with ones from the cloudstate repo.
+
 See `protocols/generate_desc`
 
 ### :TODO: Next TCK error
