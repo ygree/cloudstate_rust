@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
+    "cloudstate-core",
     "command-macro-derive",
     "protocols",
     "entity-spike",
@@ -9,8 +10,9 @@ members = [
 
 [patch.crates-io]
 # Override Prost dependencies to experiment with injecting protobuf package into the generated code
-prost = { path = "../prost" }
-prost-types = { path = "../prost/prost-types" }
-prost-derive = { path = "../prost/prost-derive" }
-prost-build = { path = "../prost/prost-build" }
+# TODO comment it for now
+#prost = { path = "../prost" }
+#prost-types = { path = "../prost/prost-types" }
+#prost-derive = { path = "../prost/prost-derive" }
+#prost-build = { path = "../prost/prost-build" }
 

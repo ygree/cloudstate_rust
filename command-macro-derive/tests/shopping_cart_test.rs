@@ -1,10 +1,12 @@
 use ::prost::Message;
 use bytes::Bytes;
-use server_spike::CommandDecoder; //TODO should probably move this to a separate trait out of server_spike
+use cloudstate_core::CommandDecoder;
 use command_macro_derive::CommandDecoder;
 
 mod shopping_cart;
 use shopping_cart::*;
+
+//TODO Fix these tests. They've been built for Prost but now the macro generates code for protobuf.
 
 #[package = "com.example.shoppingcart"]
 #[derive(CommandDecoder, Debug, PartialEq)]

@@ -11,7 +11,6 @@ use protocols::prost_example::shoppingcart::{
     AddLineItem,
     persistence::*,
 };
-use ::prost_types::Any;
 
 fn create_any(type_url: String, msg: impl ::prost::Message) -> ::prost_types::Any {
     let mut buf = vec![];

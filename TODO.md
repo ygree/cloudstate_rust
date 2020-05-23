@@ -95,7 +95,9 @@ tck/it:test
 
 ### :DONE: Implement stub version of the `entity_discovery_server` service. TCK Relies on discovery service implementation.
 
-### :TODO: Discovery server implementation requires generation protobuf descriptors
+### :DONE: Discovery server implementation requires generation protobuf descriptors
+
+Implement in `generate-desc`.
     
 ### :TODO: Preserve service protobuf and return on the discovery call to solve:
 ---> EntityDiscovery.report_error: error = UserFunctionError { message: "Service [com.example.shoppingcart.ShoppingCart] not found in descriptors!" }
@@ -121,7 +123,7 @@ Successfully migrated to the protobuf for the main code, and the shopping_cart.r
     
 ### :TODO: Leverage Any protobuf type support
 
-### :WIP: implement a file descriptor required for the incoming discovery call to send back to proxy.
+### :DONE: implement a file descriptor required for the incoming discovery call to send back to proxy.
 
 #### :PARKED: Leverage FileDescriptors to implement Discovery server
     

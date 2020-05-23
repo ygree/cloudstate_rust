@@ -10,6 +10,7 @@ use futures::Stream;
 use bytes::Bytes;
 use std::sync::Arc;
 use std::marker::PhantomData;
+pub use cloudstate_core::CommandDecoder;
 
 pub type MaybeEntityHandler = Option<Box<dyn EventSourcedEntityHandler + Send + Sync>>;
 
@@ -234,12 +235,6 @@ impl<T> EventSourcedEntityHandler for T
         // but associated types don't work with trait objects
         self.command_received(type_url, bytes)
     }
-}
-
-pub trait CommandDecoder : Sized {
-    fn decode(type_url: String, bytes: Bytes) -> Option<Self>;
-
-    // fn encode(&self) -> Option<(String, Bytes)>;
 }
 
 enum EventSourcedSession {
