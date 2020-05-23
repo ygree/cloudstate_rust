@@ -1,6 +1,7 @@
 #!/bin/sh
 
 # Generate file descriptor for shoppingcart example
+# TODO do it in build.rs
 
 OUTPUT_DESC=shoppingcart.desc
 
