@@ -4,7 +4,6 @@ use protocols::protocol::cloudstate::{eventsourced::{
     event_sourced_server::EventSourced,
 }, entity_discovery_server::{
     EntityDiscovery,
-    EntityDiscoveryServer,
 }, ProxyInfo, EntitySpec, UserFunctionError, Entity, ServiceInfo};
 use tonic::{Status, Streaming, Response, Request};
 use std::pin::Pin;
@@ -246,8 +245,7 @@ impl<T> EventSourcedEntityHandler for T
 
 use std::sync::Arc;
 use std::marker::PhantomData;
-use protobuf::{ProtobufError, RepeatedField, Message};
-use protobuf::descriptor::{ServiceDescriptorProto, FileDescriptorSet};
+use protobuf::ProtobufError;
 
 pub trait CommandDecoder : Sized {
     fn decode(type_url: String, bytes: Bytes) -> Option<Self>;
