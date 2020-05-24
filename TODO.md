@@ -125,14 +125,14 @@ Successfully migrated to the protobuf for the main code, and the shopping_cart.r
 
 ### :DONE: implement a file descriptor required for the incoming discovery call to send back to proxy.
 
-#### :PARKED: Leverage FileDescriptors to implement Discovery server
+#### :DONE: Leverage FileDescriptors to implement Discovery server
     
 Generated file descriptor (example/shoppingcart.rs:1089) doesn't seem to contain any service descriptor!
 
-//TODO: Try to generate file descriptor properly. Should be possible to do with protoc or protobuf_codegen_pure
+//Try to generate file descriptor properly. Should be possible to do with protoc or protobuf_codegen_pure
 // https://github.com/stepancheg/rust-protobuf/issues/292#issuecomment-392607319
 
-:WIP: trying to 
+trying to 
 
 In Prost! there is a relatively fresh PR for adding file descriptor support: https://github.com/danburkert/prost/pull/311.
 Unfortunately, the PR was closed with the proposal to use include_byte! to import generated FileDescriptor.

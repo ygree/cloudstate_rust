@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use event_sourced_stream_in::Message;
 
     let init_msg = Message::Init(EventSourcedInit{
-        service_name: "shopcart".to_string(),
+        service_name: "com.example.shoppingcart.ShoppingCart".to_string(),
         entity_id: "shopcart_entity_id".to_string(),
         snapshot: Some(snapshot),
     });

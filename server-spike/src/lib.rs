@@ -126,43 +126,43 @@ impl EventSourcedSession {
 
     fn handle_known_msg(&mut self, known_msg: event_sourced_stream_in::Message) -> Option<EventSourcedStreamOut> {
         use event_sourced_stream_in::Message;
-        // use protocols::example::shoppingcart::persistence::*;
 
         match known_msg {
             Message::Init(init) => {
-                //TODO lookup service implementation by service_name
                 println!("init service: {} entity_id: {}", init.service_name, init.entity_id);
-                if let Some(snapshot) = init.snapshot {
-                    println!("snapshot: seq_id = {}", snapshot.snapshot_sequence);
-                    if let Some(snapshot_any) = snapshot.snapshot {
-
+                match &self {
+                    EventSourcedSession::New(entity_registry) => {
                         let service_name = init.service_name;
+                        match entity_registry.create(&service_name) {
+                            Some(mut entity) => {
+                                if let Some(snapshot) = init.snapshot {
+                                    println!("snapshot: seq_id = {}", snapshot.snapshot_sequence);
 
-                        let type_url = snapshot_any.type_url;
-                        let bytes = Bytes::from(snapshot_any.value);
-
-                        match &self {
-                            EventSourcedSession::New(entity_registry) => {
-                                match entity_registry.create(&service_name) {
-                                    Some(mut entity) => {
+                                    if let Some(snapshot_any) = snapshot.snapshot {
+                                        let type_url = snapshot_any.type_url;
+                                        let bytes = Bytes::from(snapshot_any.value);
                                         entity.snapshot_received(type_url, bytes);
-                                        *self = EventSourcedSession::Initialized(entity);
-                                    },
-                                    None => {
-                                        println!("Unknown service_name {}", service_name);
-                                    },
+                                    }
+                                } else {
+                                    println!("No initial snapshot provided!");
                                 }
-                            }
-                            EventSourcedSession::Initialized(_entity) => {
-                                println!("Entity already initialized!");
+                                *self = EventSourcedSession::Initialized(entity);
                             },
-                        };
+                            None => {
+                                println!("Unknown service_name {}", service_name);
+                            },
+                        }
                     }
-                }
+                    EventSourcedSession::Initialized(_entity) => {
+                        println!("Entity already initialized!");
+                    },
+                };
+                None
             },
             Message::Event(_evt) => {
-                println!("evt")
+                println!("evt");
                 //TODO decode event similar to command
+                None
             },
             Message::Command(cmd) => {
                 match self {
@@ -174,31 +174,36 @@ impl EventSourcedSession {
                                 let bytes = Bytes::from(payload_any.value);
 
                                 entity.command_received(type_url, bytes);
+
+                                use event_sourced_stream_out::Message::*;
+
+                                let reply = EventSourcedReply {
+                                    command_id: cmd.id,
+                                    client_action: None, //TODO action
+                                    side_effects: vec![], //TODO side effects
+                                    events: vec![], //TODO events
+                                    snapshot: None, //TODO snapshot
+                                };
+                                let out_msg = EventSourcedStreamOut {
+                                    message: Some(Reply(reply)),
+                                };
+                                Some(out_msg)
+
                             },
                             None => {
                                 println!("Command without payload!");
+                                None
                             },
                         }
 
                     },
                     _ => {
                         println!("Can't handle a command until the entity is initialized!");
+                        None
                     },
-                };
+                }
             },
         }
 
-        use event_sourced_stream_out::Message::*;
-        let reply = EventSourcedReply {
-            command_id: 1i64, // Only for input Command
-            client_action: None, //TODO action
-            side_effects: vec![], //TODO side effects
-            events: vec![], //TODO events
-            snapshot: None, //TODO snapshot
-        };
-        let out_msg = EventSourcedStreamOut {
-            message: Some(Reply(reply)),
-        };
-        Some(out_msg)
     }
 }

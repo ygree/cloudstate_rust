@@ -23,9 +23,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "0.0.0.0:8088".parse().unwrap();
 
     let mut registry = EntityRegistry(vec![]);
-    registry.add_entity("shopcart", ShoppingCartEntity::default);
-    registry.add_entity("shopcart2", ShoppingCartEntity::default);
-    registry.add_entity_type("shopcart3", PhantomData::<ShoppingCartEntity>);
+    registry.add_entity("com.example.shoppingcart.ShoppingCart", ShoppingCartEntity::default);
+    // registry.add_entity("shopcart2", ShoppingCartEntity::default);
+    // registry.add_entity_type("shopcart3", PhantomData::<ShoppingCartEntity>);
 
     let server = EventSourcedServerImpl(Arc::new(registry));
 
