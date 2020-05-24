@@ -2,7 +2,7 @@ use protocols::protocol::cloudstate::{eventsourced::{
     EventSourcedStreamIn, EventSourcedStreamOut, EventSourcedReply,
     event_sourced_stream_in, event_sourced_stream_out,
     event_sourced_server::EventSourced,
-}, entity_discovery_server::EntityDiscovery, ProxyInfo, EntitySpec, UserFunctionError, Entity, ServiceInfo};
+}, entity_discovery_server::EntityDiscovery, ProxyInfo, EntitySpec, UserFunctionError, Entity, ServiceInfo, ClientAction};
 use tonic::{Status, Streaming, Response, Request};
 use std::pin::Pin;
 // use futures_core::Stream; // TODO: it caused compile issues
@@ -10,6 +10,7 @@ use futures::Stream;
 use bytes::Bytes;
 use std::sync::Arc;
 use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntityHandler};
+use protocols::protocol::cloudstate::client_action::Action;
 
 pub struct EntityDiscoveryServerImpl {
     pub descriptor_set: Vec<u8>,
@@ -173,13 +174,29 @@ impl EventSourcedSession {
                                 let type_url = payload_any.type_url;
                                 let bytes = Bytes::from(payload_any.value);
 
-                                entity.command_received(type_url, bytes);
+                                let mut reply = None;
+                                if let Some((tp, bs)) = entity.command_received(type_url, bytes) {
+                                    // prepare response reply
+                                    let payload = ::prost_types::Any {
+                                        type_url: tp,
+                                        value: bs.to_vec()
+                                    };
+                                    reply = Some(ClientAction {
+                                        action: Some(
+                                            Action::Reply(
+                                                protocols::protocol::cloudstate::Reply {
+                                                    payload: Some(payload)
+                                                }
+                                            )
+                                        )
+                                    });
+                                }
 
                                 use event_sourced_stream_out::Message::*;
 
                                 let reply = EventSourcedReply {
                                     command_id: cmd.id,
-                                    client_action: None, //TODO action
+                                    client_action: reply, //TODO action
                                     side_effects: vec![], //TODO side effects
                                     events: vec![], //TODO events
                                     snapshot: None, //TODO snapshot

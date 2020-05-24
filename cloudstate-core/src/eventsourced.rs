@@ -72,7 +72,7 @@ pub trait EventSourcedEntity {
 
     // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
     type Command : CommandDecoder;
-    type Response;
+    type Response : CommandDecoder;
 
     type Snapshot : CommandDecoder;
     type Event;
@@ -106,7 +106,11 @@ pub trait EventSourcedEntity {
             //TODO return an effect to be sent to Akka
 
             //TODO encode response_opt and return
-            None
+            if let Some(resp) = response_opt {
+                <Self::Response as CommandDecoder>::encode(&resp)
+            } else {
+                None
+            }
         } else {
             None
         }

@@ -62,11 +62,11 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
                                         ident
                                     }
                                     else {
-                                        panic!("Only single non-generic struct parameter is allowed for enum variant: {}!", v.ident) //TODO properly handle it
+                                        panic!("1 Only single non-generic struct parameter is allowed for enum variant: {}!", v.ident) //TODO properly handle it
                                     }
                                 },
                                 _ => {
-                                    panic!("Only single non-generic struct parameter is allowed for enum variant {}!", v.ident) //TODO properly handle it
+                                    panic!("2 Only single non-generic struct parameter is allowed for enum variant {}!", v.ident) //TODO properly handle it
                                 },
                             }
                             //==> type = Path(TypePath { qself: None, path: Path { leading_colon: None, segments: [PathSegment { ident: Ident { ident: "GetShoppingCart", span: #0 bytes(1423..1438) }, arguments: None }] } })

@@ -5,7 +5,9 @@ use bytes::Bytes;
 pub trait CommandDecoder : Sized {
     fn decode(type_url: String, bytes: Bytes) -> Option<Self>;
 
-    // fn encode(&self) -> Option<(String, Bytes)>;
+    fn encode(&self) -> Option<(String, Bytes)> {
+        None
+    }
 }
 
 pub mod eventsourced;

@@ -1,6 +1,5 @@
 
 use bytes::Bytes;
-use std::marker::PhantomData;
 use std::sync::Arc;
 use protocols::protocol::cloudstate::{
     entity_discovery_server::EntityDiscoveryServer,
@@ -53,6 +52,8 @@ pub enum ShoppingCartCommand {
 }
 
 //TODO generate encoding trait
+#[derive(CommandDecoder)]
+#[package="com.example.shoppingcart"]
 pub enum ShoppingCartReply {
     Cart(shoppingcart::Cart),
 }
