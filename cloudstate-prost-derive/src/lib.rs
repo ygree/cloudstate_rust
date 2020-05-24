@@ -52,18 +52,17 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
         syn::Data::Enum(data_enum) => {
             //TODO check that each variant contains only one unnamed field with a type that implements ::prost::Message trait
             data_enum.variants.iter().map(|v| {
-                let field_ident = match v.fields {
+                let field_path = match v.fields {
                     Fields::Unnamed(FieldsUnnamed{ ref unnamed, .. }) => {
                         let fs: Vec<&Field> = unnamed.iter().collect();
                         if fs.len() == 1 {
                             match &fs[0].ty {
                                 Type::Path(type_path) => {
-                                    if let Some(ident) = type_path.path.get_ident() {
-                                        ident
+                                    let result = &type_path.path.segments;
+                                    if result.is_empty() {
+                                        panic!("An empty path type provided: {}!", v.ident)
                                     }
-                                    else {
-                                        panic!("1 Only single non-generic struct parameter is allowed for enum variant: {}!", v.ident) //TODO properly handle it
-                                    }
+                                    result
                                 },
                                 _ => {
                                     panic!("2 Only single non-generic struct parameter is allowed for enum variant {}!", v.ident) //TODO properly handle it
@@ -79,8 +78,7 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
                         panic!("Only unnamed fields are supported!") //TODO properly handle it
                     }
                 };
-
-                (&v.ident, field_ident)
+                (&v.ident, field_path)
             }).collect()
         },
         _ => vec![], //TODO return an error that only enums are supported
@@ -95,12 +93,13 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
         },
     };
 
-    let items: Vec<_> = variants.iter().map(|(enum_id, field_id)| {
+    let items: Vec<_> = variants.into_iter().map(|(enum_id, field_path)| {
         let variant_name = enum_id.to_string();
+        let field_id = &field_path.last().unwrap().ident;
         let full_type = format!("type.googleapis.com/{}.{}", protobuf_packet.0, &field_id.to_string());
         quote!(
             #full_type => {
-                match <#field_id as Message>::decode(bytes) {
+                match <#field_path as Message>::decode(bytes) {
                     Ok(cmd) => {
                         println!("Received {:?}", cmd);
                         Some(#type_name::#enum_id(cmd))

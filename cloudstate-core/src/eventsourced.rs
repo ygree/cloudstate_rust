@@ -91,6 +91,7 @@ pub trait EventSourcedEntity {
 
     // should be private
     fn command_received(&mut self, type_url: String, bytes: Bytes) -> Option<(String, Bytes)> {
+        println!("Handing received command {}", &type_url);
         if let Some(cmd) = <Self::Command as CommandDecoder>::decode(type_url, bytes) {
 
             let mut context = CommandHandlerContext {

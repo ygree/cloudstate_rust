@@ -168,14 +168,14 @@ impl EventSourcedSession {
             Message::Command(cmd) => {
                 match self {
                     EventSourcedSession::Initialized(entity) => {
-                        println!("Handling a command!");
                         match cmd.payload {
                             Some(payload_any) => {
                                 let type_url = payload_any.type_url;
+                                println!("Handling a command: {}", type_url);
                                 let bytes = Bytes::from(payload_any.value);
-
                                 let mut reply = None;
                                 if let Some((tp, bs)) = entity.command_received(type_url, bytes) {
+                                    println!("Sending response back: {:?}", tp);
                                     // prepare response reply
                                     let payload = ::prost_types::Any {
                                         type_url: tp,
@@ -190,6 +190,8 @@ impl EventSourcedSession {
                                             )
                                         )
                                     });
+                                } else {
+                                    println!("No response will be send back");
                                 }
 
                                 use event_sourced_stream_out::Message::*;
