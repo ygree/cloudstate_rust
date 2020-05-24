@@ -106,9 +106,12 @@ pub trait EventSourcedEntity {
             }
             //TODO return an effect to be sent to Akka
 
-            //TODO encode response_opt and return
+            //TODO clean up
             if let Some(resp) = response_opt {
-                <Self::Response as CommandDecoder>::encode(&resp)
+                match <Self::Response as CommandDecoder>::encode(&resp) {
+                    Some((type_id, bytes)) => Some((type_id, Bytes::from(bytes))),
+                    _ => None,
+                }
             } else {
                 None
             }

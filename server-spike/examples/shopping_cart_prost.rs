@@ -51,7 +51,6 @@ pub enum ShoppingCartCommand {
     GetCart(GetShoppingCart),
 }
 
-//TODO generate encoding trait
 #[derive(CommandDecoder)]
 #[package="com.example.shoppingcart"]
 pub enum ShoppingCartReply {

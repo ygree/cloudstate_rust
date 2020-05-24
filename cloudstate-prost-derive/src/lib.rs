@@ -93,7 +93,7 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
         },
     };
 
-    let items: Vec<_> = variants.into_iter().map(|(enum_id, field_path)| {
+    let items: Vec<_> = variants.iter().map(|(enum_id, field_path)| {
         let variant_name = enum_id.to_string();
         let field_id = &field_path.last().unwrap().ident;
         let full_type = format!("type.googleapis.com/{}.{}", protobuf_packet.0, &field_id.to_string());
@@ -113,12 +113,32 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
         )
     }).collect();
 
+    let encode_items: Vec<_> = variants.iter().map(|(enum_id, field_path)| {
+        let variant_name = enum_id.to_string();
+        let field_id = &field_path.last().unwrap().ident;
+        let full_type = format!("type.googleapis.com/{}.{}", protobuf_packet.0, &field_id.to_string());
+        quote!(
+            #type_name::#enum_id(msg) => {
+                let mut buf = vec![];
+                ::prost::Message::encode(msg, &mut buf).unwrap(); //TODO handle possible encode error properly
+                Some((#full_type.to_owned(), buf))
+            },
+        )
+    }).collect();
+
     let gen = quote! {
         impl CommandDecoder for #type_name {
             fn decode(type_url: String, bytes: Bytes) -> Option<Self> {
                 match type_url.as_ref() {
                     #(#items)*
                     #unknown_command
+                }
+            }
+
+            fn encode(&self) -> Option<(String, Vec<u8>)> {
+                match self {
+                    #(#encode_items)*
+                    _ => None,
                 }
             }
         }

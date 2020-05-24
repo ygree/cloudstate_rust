@@ -51,6 +51,12 @@ pub enum ShoppingCartCommand {
     GetCart(GetShoppingCart),
 }
 
+#[derive(CommandDecoder)]
+#[package="com.example.shoppingcart"]
+pub enum ShoppingCartReply {
+    Cart(shoppingcart::Cart),
+}
+
 // Events
 // #[package="com.example.shoppingcart.persistence"]
 pub enum ShoppingCartEvent {
@@ -63,12 +69,6 @@ pub enum ShoppingCartEvent {
 #[package="com.example.shoppingcart.persistence"]
 pub enum ShoppingCartSnapshot {
     Snapshot(Cart),
-}
-
-#[derive(CommandDecoder)]
-#[package="com.example.shoppingcart"]
-pub enum ShoppingCartReply {
-    Cart(shoppingcart::Cart),
 }
 
 #[derive(Default)]
