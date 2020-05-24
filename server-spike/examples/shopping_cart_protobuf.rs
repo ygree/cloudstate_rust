@@ -1,6 +1,5 @@
 
 use bytes::Bytes;
-use std::marker::PhantomData;
 use std::sync::Arc;
 use protocols::protocol::cloudstate::{
     entity_discovery_server::EntityDiscoveryServer,
@@ -8,11 +7,11 @@ use protocols::protocol::cloudstate::{
 };
 use tonic::transport::Server;
 use protocols::example::{
-    shoppingcart::{AddLineItem, RemoveLineItem, GetShoppingCart},
+    shoppingcart::{self, AddLineItem, RemoveLineItem, GetShoppingCart},
     domain::{Cart, ItemAdded, ItemRemoved, LineItem},
 };
 use cloudstate_protobuf_derive::CommandDecoder;
-use protobuf::SingularPtrField;
+use protobuf::{SingularPtrField, RepeatedField};
 use cloudstate_core::CommandDecoder;
 use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, HandleCommandContext};
 use server_spike::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
@@ -66,14 +65,21 @@ pub enum ShoppingCartSnapshot {
     Snapshot(Cart),
 }
 
+//TODO generate encoding trait
+pub enum ShoppingCartReply {
+    Cart(shoppingcart::Cart),
+}
+
 #[derive(Default)]
 //TODO use more convenient type for internal state, e.g. HashMap
 pub struct ShoppingCartEntity(Cart);
 
 impl EventSourcedEntity for ShoppingCartEntity {
 
-    type Snapshot = ShoppingCartSnapshot;
     type Command = ShoppingCartCommand;
+    type Response = ShoppingCartReply;
+
+    type Snapshot = ShoppingCartSnapshot;
     type Event = ShoppingCartEvent;
 
     fn restore(&mut self, snapshot: Self::Snapshot) {
@@ -82,7 +88,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
         println!("Snapshot Loaded: {:?}", self.0);
     }
 
-    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) {
+    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Option<Self::Response> {
         match command {
             ShoppingCartCommand::AddLine(item) => {
                 println!("Handle command: {:?}", item);
@@ -102,12 +108,29 @@ impl EventSourcedEntity for ShoppingCartEntity {
                         }
                     )
                 );
+                None
             }
             ShoppingCartCommand::RemoveLine(item) => {
                 println!("Handle command: {:?}", item);
+                None
             }
             ShoppingCartCommand::GetCart(cart) => {
                 println!("Handle command: {:?}", cart);
+                Some(
+                    ShoppingCartReply::Cart(
+                        // convert from domain::cart to shoppingcart::cart
+                        shoppingcart::Cart {
+                            items: RepeatedField::from_vec(self.0.items.iter()
+                                .map(|li| shoppingcart::LineItem {
+                                    product_id: li.productId.clone(),
+                                    name: li.name.clone(),
+                                    quantity: li.quantity,
+                                    ..Default::default()
+                                }).collect()),
+                            ..Default::default()
+                        }
+                    )
+                )
             }
         }
     }

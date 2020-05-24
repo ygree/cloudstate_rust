@@ -8,7 +8,7 @@ use protocols::protocol::cloudstate::{
 };
 use tonic::transport::Server;
 use protocols::prost_example::{
-    shoppingcart::{AddLineItem, RemoveLineItem, GetShoppingCart,
+    shoppingcart::{self, AddLineItem, RemoveLineItem, GetShoppingCart,
     persistence::{Cart, ItemAdded, ItemRemoved, LineItem},},
 };
 use prost::Message;
@@ -52,6 +52,11 @@ pub enum ShoppingCartCommand {
     GetCart(GetShoppingCart),
 }
 
+//TODO generate encoding trait
+pub enum ShoppingCartReply {
+    Cart(shoppingcart::Cart),
+}
+
 // Events
 // #[package="com.example.shoppingcart.persistence"]
 pub enum ShoppingCartEvent {
@@ -72,8 +77,10 @@ pub struct ShoppingCartEntity(Cart);
 
 impl EventSourcedEntity for ShoppingCartEntity {
 
-    type Snapshot = ShoppingCartSnapshot;
     type Command = ShoppingCartCommand;
+    type Response = ShoppingCartReply;
+
+    type Snapshot = ShoppingCartSnapshot;
     type Event = ShoppingCartEvent;
 
     fn restore(&mut self, snapshot: Self::Snapshot) {
@@ -82,7 +89,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
         println!("Snapshot Loaded: {:?}", self.0);
     }
 
-    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) {
+    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Option<Self::Response> {
         match command {
             ShoppingCartCommand::AddLine(item) => {
                 println!("Handle command: {:?}", item);
@@ -100,12 +107,29 @@ impl EventSourcedEntity for ShoppingCartEntity {
                         }
                     )
                 );
+                None
             }
             ShoppingCartCommand::RemoveLine(item) => {
                 println!("Handle command: {:?}", item);
+                None
             }
             ShoppingCartCommand::GetCart(cart) => {
                 println!("Handle command: {:?}", cart);
+
+                Some(
+                    ShoppingCartReply::Cart(
+                        // convert from domain::cart to shoppingcart::cart
+                        shoppingcart::Cart {
+                            items: self.0.items.iter()
+                                .map(|li| shoppingcart::LineItem {
+                                    product_id: li.product_id.clone(),
+                                    name: li.name.clone(),
+                                    quantity: li.quantity,
+                                }).collect()
+                        }
+                    )
+                )
+
             }
         }
     }

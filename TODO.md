@@ -194,12 +194,17 @@ See `protocols/generate_desc`
 
 ### :TODO: does `protobuf` provides a better way to get package name? 
 
-### :TODO: Next TCK error
+### :FIXED: Next TCK error
 
 init service: com.example.shoppingcart.ShoppingCart entity_id: testuser:1
 Can't handle a command until the entity is initialized!
 Unexpected reply, had no current command: EventSourcedReply(1,None,Vector(),Vector(),None,UnknownFieldSet(Map()))
 
+### :TODO: Return proper response for the command
+
+Introduce a new associated type: Response.
+
+- [ ] Implement encoder for the command response.
 
 ### :TODO: provide file descriptor proto with the service description.
 

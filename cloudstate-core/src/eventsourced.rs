@@ -71,8 +71,10 @@ impl<T> HandleCommandContext for CommandHandlerContext<T> {
 pub trait EventSourcedEntity {
 
     // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
-    type Snapshot : CommandDecoder;
     type Command : CommandDecoder;
+    type Response;
+
+    type Snapshot : CommandDecoder;
     type Event;
 
     fn restore(&mut self, snapshot: Self::Snapshot);
@@ -88,26 +90,30 @@ pub trait EventSourcedEntity {
     }
 
     // should be private
-    fn command_received(&mut self, type_url: String, bytes: Bytes) {
+    fn command_received(&mut self, type_url: String, bytes: Bytes) -> Option<(String, Bytes)> {
         if let Some(cmd) = <Self::Command as CommandDecoder>::decode(type_url, bytes) {
 
             let mut context = CommandHandlerContext {
                 events: vec![],
             };
 
-            self.handle_command(cmd, &mut context);
+            let response_opt = self.handle_command(cmd, &mut context);
 
             // apply events
             for evt in context.events {
                 self.handle_event(evt);
             }
-
             //TODO return an effect to be sent to Akka
+
+            //TODO encode response_opt and return
+            None
+        } else {
+            None
         }
     }
 
     //TODO consider changing the signature to return emitted events, error, or effects explicitly without using the context
-    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>);
+    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Option<Self::Response>;
 
     fn handle_event(&mut self, event: Self::Event);
 }
@@ -115,7 +121,7 @@ pub trait EventSourcedEntity {
 // this is untyped entity handler interface for the server implementation
 pub trait EventSourcedEntityHandler {
     fn snapshot_received(&mut self, type_url: String, bytes: Bytes);
-    fn command_received(&mut self, type_url: String, bytes: Bytes);
+    fn command_received(&mut self, type_url: String, bytes: Bytes) -> Option<(String, Bytes)>;
 }
 
 // This provides automatic implementation of EventSourcedEntityHandler for the server from the user's EventSourcedEntity implementation
@@ -128,7 +134,7 @@ impl<T> EventSourcedEntityHandler for T
     }
 
     #[inline]
-    fn command_received(&mut self, type_url: String, bytes: Bytes) {
+    fn command_received(&mut self, type_url: String, bytes: Bytes) -> Option<(String, Bytes)> {
         // can't decode command here because a real type is needed that is an associated type
         // but associated types don't work with trait objects
         self.command_received(type_url, bytes)
