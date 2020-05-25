@@ -15,6 +15,7 @@ use cloudstate_prost_derive::CommandDecoder;
 use cloudstate_core::CommandDecoder;
 use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, HandleCommandContext};
 use server_spike::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
+use std::collections::HashMap;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -71,9 +72,15 @@ pub enum ShoppingCartSnapshot {
     Snapshot(Cart),
 }
 
+struct ItemValue {
+    name: String,
+    qty: i32,
+}
+
+type ItemId = String;
+
 #[derive(Default)]
-//TODO use more convenient type for internal state, e.g. HashMap
-pub struct ShoppingCartEntity(Cart);
+pub struct ShoppingCartEntity(HashMap<ItemId, ItemValue>);
 
 impl EventSourcedEntity for ShoppingCartEntity {
 
@@ -85,8 +92,14 @@ impl EventSourcedEntity for ShoppingCartEntity {
 
     fn restore(&mut self, snapshot: Self::Snapshot) {
         let ShoppingCartSnapshot::Snapshot(cart) = snapshot;
-        self.0 = cart;
-        println!("Snapshot Loaded: {:?}", self.0);
+
+        println!("Loading snapshot: {:?}", &cart);
+
+        self.0.clear();
+
+        for LineItem { product_id, name,  quantity } in cart.items {
+            self.0.insert(product_id, ItemValue { name, qty: quantity });
+        }
     }
 
     fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Option<Self::Response> {
@@ -118,18 +131,16 @@ impl EventSourcedEntity for ShoppingCartEntity {
 
                 Some(
                     ShoppingCartReply::Cart(
-                        // convert from domain::cart to shoppingcart::cart
                         shoppingcart::Cart {
-                            items: self.0.items.iter()
-                                .map(|li| shoppingcart::LineItem {
-                                    product_id: li.product_id.clone(),
-                                    name: li.name.clone(),
-                                    quantity: li.quantity,
+                            items: self.0.iter()
+                                .map(|(item_id, item_val)| shoppingcart::LineItem {
+                                    product_id: item_id.clone(),
+                                    name: item_val.name.clone(),
+                                    quantity: item_val.qty,
                                 }).collect()
                         }
                     )
                 )
-
             }
         }
     }
@@ -138,8 +149,10 @@ impl EventSourcedEntity for ShoppingCartEntity {
         match event {
             ShoppingCartEvent::ItemAdded(item_added) => {
                 println!("Handle event: {:?}", item_added);
-                if let Some(item) = item_added.item {
-                    self.0.items.push(item);
+                if let Some(LineItem { product_id, name, quantity }) = item_added.item {
+                    let mut item_val = self.0.entry(product_id)
+                        .or_insert(ItemValue { name, qty: 0 });
+                    item_val.qty += quantity;
                 }
             },
             ShoppingCartEvent::ItemRemoved(item_removed) => {
