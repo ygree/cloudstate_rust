@@ -9,7 +9,7 @@ use std::pin::Pin;
 use futures::Stream;
 use bytes::Bytes;
 use std::sync::Arc;
-use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntityHandler};
+use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntityHandler, EntityResponse};
 use protocols::protocol::cloudstate::client_action::Action;
 
 pub struct EntityDiscoveryServerImpl {
@@ -160,9 +160,20 @@ impl EventSourcedSession {
                 };
                 None
             },
-            Message::Event(_evt) => {
-                println!("evt");
-                //TODO decode event similar to command
+            Message::Event(evt) => {
+                match self {
+                    EventSourcedSession::Initialized(entity) => {
+                        if let Some(event_any) = evt.payload {
+                            let type_url = event_any.type_url;
+                            println!("Handling event: {}", &type_url);
+                            let bytes = Bytes::from(event_any.value);
+                            entity.event_received(type_url, bytes);
+                        }
+                    },
+                    _ => {
+                        println!("Can't handle a event until the entity is initialized!");
+                    },
+                }
                 None
             },
             Message::Command(cmd) => {
@@ -171,15 +182,16 @@ impl EventSourcedSession {
                         match cmd.payload {
                             Some(payload_any) => {
                                 let type_url = payload_any.type_url;
-                                println!("Handling a command: {}", type_url);
+                                println!("Handling command: {}", type_url);
                                 let bytes = Bytes::from(payload_any.value);
                                 let mut reply = None;
-                                if let Some((tp, bs)) = entity.command_received(type_url, bytes) {
-                                    println!("Sending response back: {:?}", tp);
+                                let entity_resp: EntityResponse = entity.command_received(type_url, bytes);
+                                if let Some((tp, bs)) = entity_resp.reply {
+                                    println!("Preparing to send reply: {:?}", tp);
                                     // prepare response reply
                                     let payload = ::prost_types::Any {
                                         type_url: tp,
-                                        value: bs.to_vec()
+                                        value: bs.to_vec() //TODO better to use Vec<u8> instead of Bytes to avoid convertation
                                     };
                                     reply = Some(ClientAction {
                                         action: Some(
@@ -191,16 +203,26 @@ impl EventSourcedSession {
                                         )
                                     });
                                 } else {
-                                    println!("No response will be send back");
+                                    println!("Empty reply will be send back");
                                 }
+
+                                let events: Vec<_> = entity_resp.events.into_iter().map(
+                                    |(tp, bs)| {
+                                        //TODO extract method to construct Any?
+                                        ::prost_types::Any {
+                                            type_url: tp,
+                                            value: bs.to_vec()
+                                        }
+                                    }
+                                ).collect();
 
                                 use event_sourced_stream_out::Message::*;
 
                                 let reply = EventSourcedReply {
                                     command_id: cmd.id,
-                                    client_action: reply, //TODO action
+                                    client_action: reply,
                                     side_effects: vec![], //TODO side effects
-                                    events: vec![], //TODO events
+                                    events,
                                     snapshot: None, //TODO snapshot
                                 };
                                 let out_msg = EventSourcedStreamOut {

@@ -59,7 +59,8 @@ pub enum ShoppingCartReply {
 }
 
 // Events
-// #[package="com.example.shoppingcart.persistence"]
+#[derive(CommandDecoder)]
+#[package="com.example.shoppingcart.persistence"]
 pub enum ShoppingCartEvent {
     ItemAdded(ItemAdded),
     ItemRemoved(ItemRemoved),
@@ -106,8 +107,10 @@ impl EventSourcedEntity for ShoppingCartEntity {
         match command {
             ShoppingCartCommand::AddLine(item) => {
                 println!("Handle command: {:?}", item);
+                // if (item.getQuantity() <= 0) {
+                //TODO     ctx.fail("Cannot add negative quantity of to item" + item.getProductId());
+                // }
                 context.emit_event(
-                    //TODO looks like too much boilerplate
                     ShoppingCartEvent::ItemAdded(
                         ItemAdded { //TODO maybe implement auto-conversion for: ItemAdded -> ShoppingCartEvent::ItemAdded
                             item: Some(
@@ -124,11 +127,20 @@ impl EventSourcedEntity for ShoppingCartEntity {
             }
             ShoppingCartCommand::RemoveLine(item) => {
                 println!("Handle command: {:?}", item);
+                if !self.0.contains_key(&item.product_id) {
+                    //TODO      ctx.fail("Cannot remove item " + item.getProductId() + " because it is not in the cart.");
+                }
+                context.emit_event(
+                    ShoppingCartEvent::ItemRemoved(
+                        ItemRemoved { //TODO maybe implement auto-conversion for: ItemAdded -> ShoppingCartEvent::ItemAdded
+                            product_id: item.product_id,
+                        }
+                    )
+                );
                 None
             }
             ShoppingCartCommand::GetCart(cart) => {
                 println!("Handle command: {:?}", cart);
-
                 Some(
                     ShoppingCartReply::Cart(
                         shoppingcart::Cart {
@@ -157,7 +169,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
             },
             ShoppingCartEvent::ItemRemoved(item_removed) => {
                 println!("Handle event: {:?}", item_removed);
-                //TODO remove item
+                self.0.remove(&item_removed.product_id);
             },
         }
     }

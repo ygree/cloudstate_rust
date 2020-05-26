@@ -188,25 +188,30 @@ See `protocols/generate_desc`
 
 ### :DONE: extract all parts that don't depend on the gRPC implementation out to `cloudstate-core` module
 
-### :TODO: rename `CommandDecoder` to something more descriptive
-
-### :TODO: introduce a builder for service discovery 
-
-### :TODO: does `protobuf` provides a better way to get package name? 
-
 ### :FIXED: Next TCK error
 
 init service: com.example.shoppingcart.ShoppingCart entity_id: testuser:1
 Can't handle a command until the entity is initialized!
 Unexpected reply, had no current command: EventSourcedReply(1,None,Vector(),Vector(),None,UnknownFieldSet(Map()))
 
-### :TODO: Return proper response for the command
+### :DONE: Return proper response for the command
 
 Introduce a new associated type: Response.
 
-- [ ] Implement encoder for the command response.
+- [x] Implement encoder for the command response.
 
-### :TODO: provide file descriptor proto with the service description.
+### :DONE: provide file descriptor proto with the service description.
+
+### --------------------------------------------------------------------------------------------------------------------
+
+### :TODO: rename `CommandDecoder` to something more descriptive
+
+### :TODO: use Vec<u8> in `CommandDecoder` implementation instead of Bytes
+
+### :TODO: introduce a builder for service discovery 
+
+### :TODO: does `protobuf` provides a better way to get package name?
+    Doesn't seem so. The only place it has the package name encoded is the file descriptor.
 
 ### :TODO: command-macro-derive tests are fragile because they match exact compilation error and it depends on the `server-spike` module that makes it very fragile. The only need for the dependency is the CommandDecoder trait. Moving it to more stable crate should resolve this issue.
     

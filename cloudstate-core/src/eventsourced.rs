@@ -75,7 +75,7 @@ pub trait EventSourcedEntity {
     type Response : CommandDecoder;
 
     type Snapshot : CommandDecoder;
-    type Event;
+    type Event : CommandDecoder;
 
     fn restore(&mut self, snapshot: Self::Snapshot);
 
@@ -89,16 +89,22 @@ pub trait EventSourcedEntity {
         }
     }
 
-    // should be private
-    fn command_received(&mut self, type_url: String, bytes: Bytes) -> Option<(String, Bytes)> {
+    fn command_received(&mut self, type_url: String, bytes: Bytes) -> EntityResponse {
         println!("Handing received command {}", &type_url);
-        if let Some(cmd) = <Self::Command as CommandDecoder>::decode(type_url, bytes) {
+        if let Some(cmd) = <Self::Command as CommandDecoder>::decode(type_url.clone(), bytes) {
 
             let mut context = CommandHandlerContext {
                 events: vec![],
             };
 
             let response_opt = self.handle_command(cmd, &mut context);
+
+            let events = context.events.iter().flat_map(|e| {
+                match <Self::Event as CommandDecoder>::encode(&e) {
+                    Some((type_id, bytes)) => Some((type_id, Bytes::from(bytes))),
+                    _ => None,
+                }
+            }).collect();
 
             // apply events
             for evt in context.events {
@@ -107,29 +113,57 @@ pub trait EventSourcedEntity {
             //TODO return an effect to be sent to Akka
 
             //TODO clean up
-            if let Some(resp) = response_opt {
+            let reply = if let Some(resp) = response_opt {
                 match <Self::Response as CommandDecoder>::encode(&resp) {
                     Some((type_id, bytes)) => Some((type_id, Bytes::from(bytes))),
                     _ => None,
                 }
             } else {
+                //TODO construct empty response?
                 None
+            };
+
+            EntityResponse {
+                reply,
+                events
             }
         } else {
-            None
+            println!("Couldn't decode command {}", type_url);
+            EntityResponse {
+                reply: None, //TODO reply failure
+                events: vec![],
+            }
         }
     }
 
     //TODO consider changing the signature to return emitted events, error, or effects explicitly without using the context
     fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Option<Self::Response>;
 
+    fn event_received(&mut self, type_url: String, bytes: Bytes) {
+        println!("Handing received event {}", type_url);
+
+        if let Some(evt) = <Self::Event as CommandDecoder>::decode(type_url, bytes) {
+            self.handle_event(evt);
+        }
+    }
+
     fn handle_event(&mut self, event: Self::Event);
 }
+
+pub struct EntityResponse {
+    pub reply: Option<(String, Bytes)>,
+    pub events: Vec<(String, Bytes)>,
+// client_action: reply, //TODO action
+// side_effects: vec![], //TODO side effects
+// snapshot: None, //TODO snapshot
+}
+
 
 // this is untyped entity handler interface for the server implementation
 pub trait EventSourcedEntityHandler {
     fn snapshot_received(&mut self, type_url: String, bytes: Bytes);
-    fn command_received(&mut self, type_url: String, bytes: Bytes) -> Option<(String, Bytes)>;
+    fn command_received(&mut self, type_url: String, bytes: Bytes) -> EntityResponse;
+    fn event_received(&mut self, type_url: String, bytes: Bytes);
 }
 
 // This provides automatic implementation of EventSourcedEntityHandler for the server from the user's EventSourcedEntity implementation
@@ -142,10 +176,17 @@ impl<T> EventSourcedEntityHandler for T
     }
 
     #[inline]
-    fn command_received(&mut self, type_url: String, bytes: Bytes) -> Option<(String, Bytes)> {
+    fn command_received(&mut self, type_url: String, bytes: Bytes) -> EntityResponse {
         // can't decode command here because a real type is needed that is an associated type
         // but associated types don't work with trait objects
         self.command_received(type_url, bytes)
+    }
+
+    #[inline]
+    fn event_received(&mut self, type_url: String, bytes: Bytes) {
+        // can't decode event here because a real type is needed that is an associated type
+        // but associated types don't work with trait objects
+        self.event_received(type_url, bytes)
     }
 }
 
