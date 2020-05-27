@@ -184,27 +184,31 @@ impl EventSourcedSession {
                                 let type_url = payload_any.type_url;
                                 println!("Handling command: {}", type_url);
                                 let bytes = Bytes::from(payload_any.value);
-                                let mut reply = None;
                                 let entity_resp: EntityResponse = entity.command_received(type_url, bytes);
-                                if let Some((tp, bs)) = entity_resp.reply {
-                                    println!("Preparing to send reply: {:?}", tp);
-                                    // prepare response reply
-                                    let payload = ::prost_types::Any {
-                                        type_url: tp,
-                                        value: bs.to_vec() //TODO better to use Vec<u8> instead of Bytes to avoid convertation
-                                    };
-                                    reply = Some(ClientAction {
-                                        action: Some(
-                                            Action::Reply(
-                                                protocols::protocol::cloudstate::Reply {
-                                                    payload: Some(payload)
-                                                }
-                                            )
-                                        )
+
+                                let (tp, vc) = entity_resp.reply
+                                    .map(|(tp, bs)| { (tp, bs.to_vec()) })
+                                    .unwrap_or_else(|| {
+                                        let mut buf = vec![];
+                                        use ::prost::Message;
+                                        ().encode(&mut buf).unwrap();
+                                        ("google.protobuf.Empty".to_owned(), buf)
                                     });
-                                } else {
-                                    println!("Empty reply will be send back");
-                                }
+                                println!("Preparing to send reply: {:?}", tp);
+                                // prepare response reply
+                                let payload = ::prost_types::Any {
+                                    type_url: tp,
+                                    value: vc
+                                };
+                                let reply = Some(ClientAction {
+                                    action: Some(
+                                        Action::Reply(
+                                            protocols::protocol::cloudstate::Reply {
+                                                payload: Some(payload)
+                                            }
+                                        )
+                                    )
+                                });
 
                                 let events: Vec<_> = entity_resp.events.into_iter().map(
                                     |(tp, bs)| {
