@@ -2,15 +2,16 @@ use protocols::protocol::cloudstate::{eventsourced::{
     EventSourcedStreamIn, EventSourcedStreamOut, EventSourcedReply,
     event_sourced_stream_in, event_sourced_stream_out,
     event_sourced_server::EventSourced,
-}, entity_discovery_server::EntityDiscovery, ProxyInfo, EntitySpec, UserFunctionError, Entity, ServiceInfo, ClientAction};
+}, entity_discovery_server::EntityDiscovery, ProxyInfo, EntitySpec, UserFunctionError, Entity, ServiceInfo, ClientAction,
+  client_action::Action
+};
 use tonic::{Status, Streaming, Response, Request};
 use std::pin::Pin;
 // use futures_core::Stream; // TODO: it caused compile issues
 use futures::Stream;
 use bytes::Bytes;
 use std::sync::Arc;
-use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntityHandler, EntityResponse};
-use protocols::protocol::cloudstate::client_action::Action;
+use cloudstate_core::eventsourced::{EntityAction, EntityRegistry, EventSourcedEntityHandler, EntityResponse};
 
 pub struct EntityDiscoveryServerImpl {
     pub descriptor_set: Vec<u8>,
@@ -186,36 +187,51 @@ impl EventSourcedSession {
                                 let bytes = Bytes::from(payload_any.value);
                                 let entity_resp: EntityResponse = entity.command_received(type_url, bytes);
 
-                                let (tp, vc) = entity_resp.reply
-                                    .map(|(tp, bs)| { (tp, bs.to_vec()) })
-                                    .unwrap_or_else(|| {
-                                        let mut buf = vec![];
-                                        use ::prost::Message;
-                                        ().encode(&mut buf).unwrap();
-                                        ("google.protobuf.Empty".to_owned(), buf)
-                                    });
-                                println!("Preparing to send reply: {:?}", tp);
-                                // prepare response reply
-                                let payload = ::prost_types::Any {
-                                    type_url: tp,
-                                    value: vc
+                                let client_action = match entity_resp.action {
+                                    EntityAction::Reply { type_url, bytes } => {
+                                        ClientAction { // TODO maybe extract client action local factory?
+                                            action: Some(
+                                                Action::Reply(
+                                                    protocols::protocol::cloudstate::Reply {
+                                                        payload: Some(
+                                                            ::prost_types::Any {
+                                                                type_url,
+                                                                value: bytes
+                                                            }
+                                                        )
+                                                    }
+                                                )
+                                            )
+                                        }
+                                    },
+                                    EntityAction::Failure { msg } => {
+                                        ClientAction { // TODO maybe extract client action local factory?
+                                            action: Some(
+                                                Action::Failure(
+                                                    protocols::protocol::cloudstate::Failure {
+                                                        command_id: cmd.id,
+                                                        description: msg
+                                                    }
+                                                )
+                                            )
+                                        }
+                                    },
                                 };
-                                let reply = Some(ClientAction {
-                                    action: Some(
-                                        Action::Reply(
-                                            protocols::protocol::cloudstate::Reply {
-                                                payload: Some(payload)
-                                            }
-                                        )
-                                    )
-                                });
+
+                                // TODO now an empty reponse is created at the entity declaration side,
+                                // but we could consider to return Option and if it's None the create
+                                // and empty reponse here:
+                                //         let mut buf = vec![];
+                                //         use ::prost::Message;
+                                //         ().encode(&mut buf).unwrap();
+                                //         ("google.protobuf.Empty".to_owned(), buf)
 
                                 let events: Vec<_> = entity_resp.events.into_iter().map(
                                     |(tp, bs)| {
                                         //TODO extract method to construct Any?
                                         ::prost_types::Any {
                                             type_url: tp,
-                                            value: bs.to_vec()
+                                            value: bs.to_vec() //TODO get rid for the bytes type
                                         }
                                     }
                                 ).collect();
@@ -224,7 +240,7 @@ impl EventSourcedSession {
 
                                 let reply = EventSourcedReply {
                                     command_id: cmd.id,
-                                    client_action: reply,
+                                    client_action: Some(client_action),
                                     side_effects: vec![], //TODO side effects
                                     events,
                                     snapshot: None, //TODO snapshot

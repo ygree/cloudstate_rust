@@ -97,7 +97,7 @@ pub trait EventSourcedEntity {
                 events: vec![],
             };
 
-            let response_opt = self.handle_command(cmd, &mut context);
+            let result = self.handle_command(cmd, &mut context);
 
             let events = context.events.iter().flat_map(|e| {
                 match <Self::Event as CommandDecoder>::encode(&e) {
@@ -112,32 +112,47 @@ pub trait EventSourcedEntity {
             }
             //TODO return an effect to be sent to Akka
 
-            //TODO clean up
-            let reply = if let Some(resp) = response_opt {
-                match <Self::Response as CommandDecoder>::encode(&resp) {
-                    Some((type_id, bytes)) => Some((type_id, Bytes::from(bytes))),
-                    _ => None,
+            let action: EntityAction = match result {
+                Ok(resp) => {
+                    match <Self::Response as CommandDecoder>::encode(&resp) {
+                        Some((type_url, bytes)) => {
+                            EntityAction::Reply {
+                                type_url,
+                                bytes
+                            }
+                        }
+                        _ => {
+                            //TODO log an error
+                            EntityAction::Failure {
+                                msg: "Server error: couldn't encode the response".to_owned()
+                            }
+                        }
+                    }
+                },
+                Err(msg) => {
+                    EntityAction::Failure {
+                        msg
+                    }
                 }
-            } else {
-                //TODO construct empty response?
-                None
             };
 
             EntityResponse {
-                reply,
+                action,
                 events
             }
         } else {
             println!("Couldn't decode command {}", type_url);
             EntityResponse {
-                reply: None, //TODO reply failure
+                action: EntityAction::Failure {
+                    msg: "Server error: couldn't encode the response".to_owned()
+                },
                 events: vec![],
             }
         }
     }
 
     //TODO consider changing the signature to return emitted events, error, or effects explicitly without using the context
-    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Option<Self::Response>;
+    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Self::Response, String>;
 
     fn event_received(&mut self, type_url: String, bytes: Bytes) {
         println!("Handing received event {}", type_url);
@@ -150,10 +165,20 @@ pub trait EventSourcedEntity {
     fn handle_event(&mut self, event: Self::Event);
 }
 
+pub enum EntityAction {
+    Reply {
+        type_url: String,
+        bytes: Vec<u8>,
+    },
+    Failure {
+        msg: String,
+    },
+    //TODO Forward,
+}
+
 pub struct EntityResponse {
-    pub reply: Option<(String, Bytes)>,
+    pub action: EntityAction, //TODO maybe rename to ClientAction but it will overlap with the prototype name?
     pub events: Vec<(String, Bytes)>,
-// client_action: reply, //TODO action
 // side_effects: vec![], //TODO side effects
 // snapshot: None, //TODO snapshot
 }

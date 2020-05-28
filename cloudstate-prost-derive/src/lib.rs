@@ -114,7 +114,7 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
     }).collect();
 
     let encode_items: Vec<_> = variants.iter().map(|(enum_id, field_path)| {
-        let variant_name = enum_id.to_string();
+        let _variant_name = enum_id.to_string();
         let field_id = &field_path.last().unwrap().ident;
         let full_type = format!("type.googleapis.com/{}.{}", protobuf_packet.0, &field_id.to_string());
         quote!(

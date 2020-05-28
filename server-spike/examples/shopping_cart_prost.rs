@@ -15,7 +15,7 @@ use cloudstate_prost_derive::CommandDecoder;
 use cloudstate_core::CommandDecoder;
 use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, HandleCommandContext};
 use server_spike::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -50,12 +50,17 @@ pub enum ShoppingCartCommand {
     AddLine(AddLineItem),
     RemoveLine(RemoveLineItem),
     GetCart(GetShoppingCart),
+    // GetCart2(GetShoppingCart, impl Ctx<shoppingcart::Cart>), //TODO what if we encode response type in the command?
+    // GetCart2(GetShoppingCart, &mut shoppingcart::Cart), //TODO or this way
 }
+
+type Empty = ();
 
 #[derive(CommandDecoder)]
 #[package="com.example.shoppingcart"]
 pub enum ShoppingCartReply {
     Cart(shoppingcart::Cart),
+    Empty(Empty),
 }
 
 // Events
@@ -81,12 +86,13 @@ struct ItemValue {
 type ItemId = String;
 
 #[derive(Default)]
-pub struct ShoppingCartEntity(HashMap<ItemId, ItemValue>);
+pub struct ShoppingCartEntity(BTreeMap<ItemId, ItemValue>);
 
 impl EventSourcedEntity for ShoppingCartEntity {
 
     type Command = ShoppingCartCommand;
     type Response = ShoppingCartReply;
+    //TODO type Failure = ???
 
     type Snapshot = ShoppingCartSnapshot;
     type Event = ShoppingCartEvent;
@@ -103,13 +109,13 @@ impl EventSourcedEntity for ShoppingCartEntity {
         }
     }
 
-    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Option<Self::Response> {
+    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Self::Response, String> {
         match command {
             ShoppingCartCommand::AddLine(item) => {
                 println!("Handle command: {:?}", item);
-                // if (item.getQuantity() <= 0) {
-                //TODO     ctx.fail("Cannot add negative quantity of to item" + item.getProductId());
-                // }
+                if item.quantity <= 0 {
+                    return Err(format!("Cannot add negative quantity of to item {}", item.product_id))
+                }
                 context.emit_event(
                     ShoppingCartEvent::ItemAdded(
                         ItemAdded { //TODO maybe implement auto-conversion for: ItemAdded -> ShoppingCartEvent::ItemAdded
@@ -123,12 +129,12 @@ impl EventSourcedEntity for ShoppingCartEntity {
                         }
                     )
                 );
-                None
+                Ok(ShoppingCartReply::Empty(()))
             }
             ShoppingCartCommand::RemoveLine(item) => {
                 println!("Handle command: {:?}", item);
                 if !self.0.contains_key(&item.product_id) {
-                    //TODO      ctx.fail("Cannot remove item " + item.getProductId() + " because it is not in the cart.");
+                    return Err(format!("Cannot remove item {} because it is not in the cart.", item.product_id))
                 }
                 context.emit_event(
                     ShoppingCartEvent::ItemRemoved(
@@ -137,11 +143,11 @@ impl EventSourcedEntity for ShoppingCartEntity {
                         }
                     )
                 );
-                None
+                Ok(ShoppingCartReply::Empty(()))
             }
             ShoppingCartCommand::GetCart(cart) => {
                 println!("Handle command: {:?}", cart);
-                Some(
+                Ok(
                     ShoppingCartReply::Cart(
                         shoppingcart::Cart {
                             items: self.0.iter()

@@ -121,8 +121,6 @@ Done. Tests are failing because error don't exactly match. Need to find a better
 
 Successfully migrated to the protobuf for the main code, and the shopping_cart.rs example. The client.rs examples is still using prost!.
     
-### :TODO: Leverage Any protobuf type support
-
 ### :DONE: implement a file descriptor required for the incoming discovery call to send back to proxy.
 
 #### :DONE: Leverage FileDescriptors to implement Discovery server
@@ -202,11 +200,16 @@ Introduce a new associated type: Response.
 
 ### :DONE: provide file descriptor proto with the service description.
 
+### :DONE: use Vec<u8> in `CommandDecoder` implementation instead of Bytes
+
+### :DONE: Pass all the Cloudstate TCK tests
+
 ### --------------------------------------------------------------------------------------------------------------------
 
-### :TODO: rename `CommandDecoder` to something more descriptive
+### :TODO: fix shopping_cart_protobuf.rs to pass all the TCK tests.
+    Use protobuf::well_known_types::Empty for the empty result.
 
-### :TODO: use Vec<u8> in `CommandDecoder` implementation instead of Bytes
+### :TODO: rename `CommandDecoder` to something more descriptive
 
 ### :TODO: introduce a builder for service discovery 
 
