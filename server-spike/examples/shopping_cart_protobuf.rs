@@ -11,7 +11,7 @@ use protocols::example::{
     domain::{Cart, ItemAdded, ItemRemoved, LineItem},
 };
 use cloudstate_protobuf_derive::CommandDecoder;
-use protobuf::{SingularPtrField, RepeatedField, well_known_types::Empty};
+use protobuf::{SingularPtrField, RepeatedField};
 use cloudstate_core::CommandDecoder;
 use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, HandleCommandContext};
 use server_spike::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
@@ -57,7 +57,6 @@ pub enum ShoppingCartCommand {
 #[package="com.example.shoppingcart"]
 pub enum ShoppingCartReply {
     Cart(shoppingcart::Cart),
-    Empty(Empty),
 }
 
 // Events
@@ -106,7 +105,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
         }
     }
 
-    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Self::Response, String> {
+    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Option<Self::Response>, String> {
         match command {
             ShoppingCartCommand::AddLine(item) => {
                 println!("Handle command: {:?}", item);
@@ -129,7 +128,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
                         }
                     )
                 );
-                Ok(ShoppingCartReply::Empty(Empty::new()))
+                Ok(None)
             }
             ShoppingCartCommand::RemoveLine(item) => {
                 println!("Handle command: {:?}", item);
@@ -144,11 +143,11 @@ impl EventSourcedEntity for ShoppingCartEntity {
                         }
                     )
                 );
-                Ok(ShoppingCartReply::Empty(Empty::new()))
+                Ok(None)
             }
             ShoppingCartCommand::GetCart(cart) => {
                 println!("Handle command: {:?}", cart);
-                Ok(
+                Ok(Some(
                     ShoppingCartReply::Cart(
                         shoppingcart::Cart {
                             items: RepeatedField::from_vec(self.0.iter()
@@ -161,7 +160,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
                             ..Default::default()
                         }
                     )
-                )
+                ))
             }
         }
     }

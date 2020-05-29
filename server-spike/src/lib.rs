@@ -204,6 +204,28 @@ impl EventSourcedSession {
                                             )
                                         }
                                     },
+                                    EntityAction::EmptyReply => {
+                                        // TODO construct only once
+                                        let mut buf = vec![];
+                                        use ::prost::Message;
+                                        ().encode(&mut buf).unwrap();
+                                        let type_url = "type.googleapis.com/google.protobuf.Empty".to_owned();
+
+                                        ClientAction { // TODO maybe extract client action local factory?
+                                            action: Some(
+                                                Action::Reply(
+                                                    protocols::protocol::cloudstate::Reply {
+                                                        payload: Some(
+                                                            ::prost_types::Any {
+                                                                type_url,
+                                                                value: buf
+                                                            }
+                                                        )
+                                                    }
+                                                )
+                                            )
+                                        }
+                                    },
                                     EntityAction::Failure { msg } => {
                                         ClientAction { // TODO maybe extract client action local factory?
                                             action: Some(
@@ -217,14 +239,6 @@ impl EventSourcedSession {
                                         }
                                     },
                                 };
-
-                                // TODO now an empty reponse is created at the entity declaration side,
-                                // but we could consider to return Option and if it's None the create
-                                // and empty reponse here:
-                                //         let mut buf = vec![];
-                                //         use ::prost::Message;
-                                //         ().encode(&mut buf).unwrap();
-                                //         ("google.protobuf.Empty".to_owned(), buf)
 
                                 let events: Vec<_> = entity_resp.events.into_iter().map(
                                     |(tp, bs)| {

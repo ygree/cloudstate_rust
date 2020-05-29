@@ -54,13 +54,10 @@ pub enum ShoppingCartCommand {
     // GetCart2(GetShoppingCart, &mut shoppingcart::Cart), //TODO or this way
 }
 
-type Empty = ();
-
 #[derive(CommandDecoder)]
 #[package="com.example.shoppingcart"]
 pub enum ShoppingCartReply {
     Cart(shoppingcart::Cart),
-    Empty(Empty),
 }
 
 // Events
@@ -92,7 +89,6 @@ impl EventSourcedEntity for ShoppingCartEntity {
 
     type Command = ShoppingCartCommand;
     type Response = ShoppingCartReply;
-    //TODO type Failure = ???
 
     type Snapshot = ShoppingCartSnapshot;
     type Event = ShoppingCartEvent;
@@ -109,7 +105,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
         }
     }
 
-    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Self::Response, String> {
+    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Option<Self::Response>, String> {
         match command {
             ShoppingCartCommand::AddLine(item) => {
                 println!("Handle command: {:?}", item);
@@ -129,7 +125,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
                         }
                     )
                 );
-                Ok(ShoppingCartReply::Empty(()))
+                Ok(None)
             }
             ShoppingCartCommand::RemoveLine(item) => {
                 println!("Handle command: {:?}", item);
@@ -143,11 +139,11 @@ impl EventSourcedEntity for ShoppingCartEntity {
                         }
                     )
                 );
-                Ok(ShoppingCartReply::Empty(()))
+                Ok(None)
             }
             ShoppingCartCommand::GetCart(cart) => {
                 println!("Handle command: {:?}", cart);
-                Ok(
+                Ok(Some(
                     ShoppingCartReply::Cart(
                         shoppingcart::Cart {
                             items: self.0.iter()
@@ -158,7 +154,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
                                 }).collect()
                         }
                     )
-                )
+                ))
             }
         }
     }

@@ -113,7 +113,7 @@ pub trait EventSourcedEntity {
             //TODO return an effect to be sent to Akka
 
             let action: EntityAction = match result {
-                Ok(resp) => {
+                Ok(Some(resp)) => {
                     match <Self::Response as CommandDecoder>::encode(&resp) {
                         Some((type_url, bytes)) => {
                             EntityAction::Reply {
@@ -129,6 +129,7 @@ pub trait EventSourcedEntity {
                         }
                     }
                 },
+                Ok(None) => EntityAction::EmptyReply,
                 Err(msg) => {
                     EntityAction::Failure {
                         msg
@@ -152,7 +153,7 @@ pub trait EventSourcedEntity {
     }
 
     //TODO consider changing the signature to return emitted events, error, or effects explicitly without using the context
-    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Self::Response, String>;
+    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Option<Self::Response>, String>;
 
     fn event_received(&mut self, type_url: String, bytes: Bytes) {
         println!("Handing received event {}", type_url);
@@ -170,6 +171,7 @@ pub enum EntityAction {
         type_url: String,
         bytes: Vec<u8>,
     },
+    EmptyReply,
     Failure {
         msg: String,
     },

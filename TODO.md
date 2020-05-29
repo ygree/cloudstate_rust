@@ -206,15 +206,15 @@ Introduce a new associated type: Response.
 
 ### --------------------------------------------------------------------------------------------------------------------
 
-### :TODO: fix shopping_cart_protobuf.rs to pass all the TCK tests.
+### :DONE: Use protobuf::well_known_types::Empty for the empty result.
 
-#### :DONE: Use protobuf::well_known_types::Empty for the empty result.
+### :TODO: `shopping_cart_protobuf.rs` doesn't pass TCK test. It returns an empty cart for some reason.
 
-#### :TODO: It doesn't pass TCK test. It returns an empty cart for some reason.
-
-### :TODO: Fix Empty type_url inconsistency
+### :DONE: Fix Empty type_url inconsistency
 
 2020-05-28 23:07:06.766 WARN io.cloudstate.proxy.Serve$ - com.example.shoppingcart.ShoppingCart.RemoveItem: Expected reply type_url to be [type.googleapis.com/google.protobuf.Empty] but was [type.googleapis.com/com.example.shoppingcart.Empty].
+
+> Introduce and EmptyReply. From the user impl perspective None assumed to be an empty response.
 
 ### :DONE: TCK test throws an exception
 
