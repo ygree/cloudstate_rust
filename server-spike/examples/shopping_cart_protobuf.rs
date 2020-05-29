@@ -11,10 +11,12 @@ use protocols::example::{
     domain::{Cart, ItemAdded, ItemRemoved, LineItem},
 };
 use cloudstate_protobuf_derive::CommandDecoder;
-use protobuf::{SingularPtrField, RepeatedField};
+use protobuf::{SingularPtrField, RepeatedField, well_known_types::Empty};
 use cloudstate_core::CommandDecoder;
 use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, HandleCommandContext};
 use server_spike::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
+use std::collections::BTreeMap;
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -55,10 +57,12 @@ pub enum ShoppingCartCommand {
 #[package="com.example.shoppingcart"]
 pub enum ShoppingCartReply {
     Cart(shoppingcart::Cart),
+    Empty(Empty),
 }
 
 // Events
-// #[package="com.example.shoppingcart.persistence"]
+#[derive(CommandDecoder)]
+#[package="com.example.shoppingcart.persistence"]
 pub enum ShoppingCartEvent {
     ItemAdded(ItemAdded),
     ItemRemoved(ItemRemoved),
@@ -71,9 +75,16 @@ pub enum ShoppingCartSnapshot {
     Snapshot(Cart),
 }
 
+#[derive(Debug)]
+struct ItemValue {
+    name: String,
+    qty: i32,
+}
+
+type ItemId = String;
+
 #[derive(Default)]
-//TODO use more convenient type for internal state, e.g. HashMap
-pub struct ShoppingCartEntity(Cart);
+pub struct ShoppingCartEntity(BTreeMap<ItemId, ItemValue>);
 
 impl EventSourcedEntity for ShoppingCartEntity {
 
@@ -85,14 +96,23 @@ impl EventSourcedEntity for ShoppingCartEntity {
 
     fn restore(&mut self, snapshot: Self::Snapshot) {
         let ShoppingCartSnapshot::Snapshot(cart) = snapshot;
-        self.0 = cart;
-        println!("Snapshot Loaded: {:?}", self.0);
+
+        println!("Loading snapshot: {:?}", &cart);
+
+        self.0.clear();
+
+        for LineItem { productId, name,  quantity, .. } in cart.items.into_vec() {
+            self.0.insert(productId, ItemValue { name, qty: quantity });
+        }
     }
 
-    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Option<Self::Response> {
+    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Self::Response, String> {
         match command {
             ShoppingCartCommand::AddLine(item) => {
                 println!("Handle command: {:?}", item);
+                if item.quantity <= 0 {
+                    return Err(format!("Cannot add negative quantity of to item {}", item.product_id))
+                }
                 context.emit_event(
                     //TODO looks like too much boilerplate
                     ShoppingCartEvent::ItemAdded(
@@ -109,23 +129,33 @@ impl EventSourcedEntity for ShoppingCartEntity {
                         }
                     )
                 );
-                None
+                Ok(ShoppingCartReply::Empty(Empty::new()))
             }
             ShoppingCartCommand::RemoveLine(item) => {
                 println!("Handle command: {:?}", item);
-                None
+                if !self.0.contains_key(&item.product_id) {
+                    return Err(format!("Cannot remove item {} because it is not in the cart.", &item.product_id))
+                }
+                context.emit_event(
+                    ShoppingCartEvent::ItemRemoved(
+                        ItemRemoved {
+                            productId: item.product_id,
+                            ..Default::default()
+                        }
+                    )
+                );
+                Ok(ShoppingCartReply::Empty(Empty::new()))
             }
             ShoppingCartCommand::GetCart(cart) => {
                 println!("Handle command: {:?}", cart);
-                Some(
+                Ok(
                     ShoppingCartReply::Cart(
-                        // convert from domain::cart to shoppingcart::cart
                         shoppingcart::Cart {
-                            items: RepeatedField::from_vec(self.0.items.iter()
-                                .map(|li| shoppingcart::LineItem {
-                                    product_id: li.productId.clone(),
-                                    name: li.name.clone(),
-                                    quantity: li.quantity,
+                            items: RepeatedField::from_vec(self.0.iter()
+                                .map(|(item_id, item_val)| shoppingcart::LineItem {
+                                    product_id: item_id.clone(),
+                                    name: item_val.name.clone(),
+                                    quantity: item_val.qty,
                                     ..Default::default()
                                 }).collect()),
                             ..Default::default()
@@ -141,12 +171,18 @@ impl EventSourcedEntity for ShoppingCartEntity {
             ShoppingCartEvent::ItemAdded(item_added) => {
                 println!("Handle event: {:?}", item_added);
                 if let Some(item) = item_added.item.into_option() {
-                    self.0.items.push(item);
+                    {
+                        let mut item_val = self.0.entry(item.productId.clone())
+                            .or_insert(ItemValue { name: item.name.clone(), qty: 0 });
+                        item_val.qty += item.quantity;
+                    }
+                    println!("----> ItemAdded : {:?} : {:?}", &item, self.0.entry(item.productId.clone()));
                 }
             },
             ShoppingCartEvent::ItemRemoved(item_removed) => {
                 println!("Handle event: {:?}", item_removed);
-                //TODO remove item
+                self.0.remove(&item_removed.productId);
+                println!("----> ItemRemoved : {:?} : {:?}", &item_removed, self.0.entry(item_removed.productId.clone()));
             },
         }
     }
