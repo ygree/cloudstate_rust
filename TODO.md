@@ -207,7 +207,21 @@ Introduce a new associated type: Response.
 ### --------------------------------------------------------------------------------------------------------------------
 
 ### :TODO: fix shopping_cart_protobuf.rs to pass all the TCK tests.
-    Use protobuf::well_known_types::Empty for the empty result.
+
+#### :DONE: Use protobuf::well_known_types::Empty for the empty result.
+
+#### :TODO: It doesn't pass TCK test. It returns an empty cart for some reason.
+
+### :TODO: Fix Empty type_url inconsistency
+
+2020-05-28 23:07:06.766 WARN io.cloudstate.proxy.Serve$ - com.example.shoppingcart.ShoppingCart.RemoveItem: Expected reply type_url to be [type.googleapis.com/google.protobuf.Empty] but was [type.googleapis.com/com.example.shoppingcart.Empty].
+
+### :DONE: TCK test throws an exception
+
+[ERROR] [05/28/2020 23:07:08.330] [CloudStateTCK-akka.actor.default-dispatcher-26] [akka://CloudStateTCK/system/pool-master] connection pool for Pool(shared->http://127.0.0.1:9000) has shut down unexpectedly
+java.lang.IllegalStateException: Pool shutdown unexpectedly
+
+> Actually, it throws the same error for the Java sample TCK test.
 
 ### :TODO: rename `CommandDecoder` to something more descriptive
 
