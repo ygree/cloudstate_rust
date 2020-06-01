@@ -13,7 +13,7 @@ use protocols::prost_example::{
 use prost::Message;
 use cloudstate_prost_derive::CommandDecoder;
 use cloudstate_core::CommandDecoder;
-use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, HandleCommandContext};
+use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, HandleCommandContext, Response};
 use server_spike::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
 use std::collections::BTreeMap;
 
@@ -105,7 +105,8 @@ impl EventSourcedEntity for ShoppingCartEntity {
         }
     }
 
-    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Option<Self::Response>, String> {
+    // fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Option<Self::Response>, String> {
+    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Response<Self::Response>, String> {
         match command {
             ShoppingCartCommand::AddLine(item) => {
                 println!("Handle command: {:?}", item);
@@ -125,7 +126,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
                         }
                     )
                 );
-                Ok(None)
+                Ok(Response::EmptyReply)
             }
             ShoppingCartCommand::RemoveLine(item) => {
                 println!("Handle command: {:?}", item);
@@ -139,11 +140,11 @@ impl EventSourcedEntity for ShoppingCartEntity {
                         }
                     )
                 );
-                Ok(None)
+                Ok(Response::EmptyReply)
             }
             ShoppingCartCommand::GetCart(cart) => {
                 println!("Handle command: {:?}", cart);
-                Ok(Some(
+                Ok(Response::Reply(
                     ShoppingCartReply::Cart(
                         shoppingcart::Cart {
                             items: self.0.iter()

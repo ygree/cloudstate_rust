@@ -65,6 +65,13 @@ impl<T> HandleCommandContext for CommandHandlerContext<T> {
     }
 }
 
+pub enum Response<T: CommandDecoder> {
+    Reply(T),
+    EmptyReply,
+    // Forward,
+    // NoReply,
+}
+
 // this is typed entity handler interface to be implemented by user
 // NOTE: it can't be used by the server side as is because it has associated types.
 //  Such traits can't be used as trait objects.
@@ -72,10 +79,9 @@ pub trait EventSourcedEntity {
 
     // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
     type Command : CommandDecoder;
-    type Response : CommandDecoder;
-
-    type Snapshot : CommandDecoder;
     type Event : CommandDecoder;
+    type Snapshot : CommandDecoder;
+    type Response : CommandDecoder;
 
     fn restore(&mut self, snapshot: Self::Snapshot);
 
@@ -113,7 +119,7 @@ pub trait EventSourcedEntity {
             //TODO return an effect to be sent to Akka
 
             let action: EntityAction = match result {
-                Ok(Some(resp)) => {
+                Ok(Response::Reply(resp)) => {
                     match <Self::Response as CommandDecoder>::encode(&resp) {
                         Some((type_url, bytes)) => {
                             EntityAction::Reply {
@@ -129,7 +135,7 @@ pub trait EventSourcedEntity {
                         }
                     }
                 },
-                Ok(None) => EntityAction::EmptyReply,
+                Ok(Response::EmptyReply) => EntityAction::EmptyReply,
                 Err(msg) => {
                     EntityAction::Failure {
                         msg
@@ -153,7 +159,7 @@ pub trait EventSourcedEntity {
     }
 
     //TODO consider changing the signature to return emitted events, error, or effects explicitly without using the context
-    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Option<Self::Response>, String>;
+    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Response<Self::Response>, String>;
 
     fn event_received(&mut self, type_url: String, bytes: Bytes) {
         println!("Handing received event {}", type_url);
@@ -166,6 +172,7 @@ pub trait EventSourcedEntity {
     fn handle_event(&mut self, event: Self::Event);
 }
 
+//TODO maybe rename to ClientAction but it will overlap with the prototype name?
 pub enum EntityAction {
     Reply {
         type_url: String,
@@ -179,7 +186,7 @@ pub enum EntityAction {
 }
 
 pub struct EntityResponse {
-    pub action: EntityAction, //TODO maybe rename to ClientAction but it will overlap with the prototype name?
+    pub action: EntityAction,
     pub events: Vec<(String, Bytes)>,
 // side_effects: vec![], //TODO side effects
 // snapshot: None, //TODO snapshot
