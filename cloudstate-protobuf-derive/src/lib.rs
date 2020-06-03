@@ -119,8 +119,8 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
         let full_type = format!("type.googleapis.com/{}.{}", protobuf_packet.0, &field_id.to_string());
         quote!(
             #type_name::#enum_id(msg) => {
-                let vec = ::protobuf::Message::write_length_delimited_to_bytes(msg).unwrap(); //TODO handle possible encode error properly
-                Some((#full_type.to_owned(), vec![]))
+                let vec = ::protobuf::Message::write_to_bytes(msg).unwrap(); //TODO handle possible encode error properly
+                Some((#full_type.to_owned(), vec))
             },
         )
     }).collect();

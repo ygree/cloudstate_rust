@@ -267,6 +267,10 @@ impl EventSourcedSession {
                             },
                             None => {
                                 println!("Command without payload!");
+                                // let out_msg = EventSourcedStreamOut {
+                                //     message: Some(Failure(reply)),
+                                // };
+                                // Some(out_msg)
                                 None
                             },
                         }
