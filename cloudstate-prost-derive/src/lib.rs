@@ -128,8 +128,8 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
 
     let gen = quote! {
         impl CommandDecoder for #type_name {
-            fn decode(type_url: String, bytes: Bytes) -> Option<Self> {
-                match type_url.as_ref() {
+            fn decode(type_url: &str, bytes: Bytes) -> Option<Self> {
+                match type_url {
                     #(#items)*
                     #unknown_command
                 }

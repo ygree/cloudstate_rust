@@ -87,7 +87,7 @@ pub trait EventSourcedEntity {
 
     // This method is called by server and need to bind to the entity typed and delegate call to the user implementation
     fn snapshot_received(&mut self, type_url: String, bytes: Bytes) {
-        if let Some(snapshot) = <Self::Snapshot as CommandDecoder>::decode(type_url, bytes) {
+        if let Some(snapshot) = <Self::Snapshot as CommandDecoder>::decode(&type_url, bytes) {
             println!("Received snapshot!");
             self.restore(snapshot);
         } else {
@@ -97,7 +97,7 @@ pub trait EventSourcedEntity {
 
     fn command_received(&mut self, type_url: String, bytes: Bytes) -> EntityResponse {
         println!("Handing received command {}", &type_url);
-        if let Some(cmd) = <Self::Command as CommandDecoder>::decode(type_url.clone(), bytes) {
+        if let Some(cmd) = <Self::Command as CommandDecoder>::decode(&type_url, bytes) {
 
             let mut context = CommandHandlerContext {
                 events: vec![],
@@ -162,9 +162,9 @@ pub trait EventSourcedEntity {
     fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Response<Self::Response>, String>;
 
     fn event_received(&mut self, type_url: String, bytes: Bytes) {
-        println!("Handing received event {}", type_url);
+        println!("Handing received event {}", &type_url);
 
-        if let Some(evt) = <Self::Event as CommandDecoder>::decode(type_url, bytes) {
+        if let Some(evt) = <Self::Event as CommandDecoder>::decode(&type_url, bytes) {
             self.handle_event(evt);
         }
     }
