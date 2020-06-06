@@ -12,6 +12,8 @@ use protocols::prost_example::shoppingcart::{
 };
 use futures_util::stream;
 use protocols::protocol::cloudstate::client_action::Action;
+use tonic::Streaming;
+use protocols::protocol::cloudstate::eventsourced::EventSourcedStreamOut;
 
 fn create_any(type_url: String, msg: impl ::prost::Message) -> ::prost_types::Any {
     let mut buf = vec![];
@@ -85,46 +87,60 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut inbound = response.into_inner();
 
-    while let Some(note) = inbound.message().await? {
+    let reply1 = expect_reply(&mut inbound).await.expect("Expected Reply");
+    assert_eq!(reply1.command_id, 56);
 
-        let expected = event_sourced_stream_out::Message::Reply(
-            EventSourcedReply {
-                command_id: 56i64,
-                client_action: Some(
-                    ClientAction {
-                        action: Some(
-                            Action::Reply(
-                                Reply {
-                                    payload: Some(create_any("type.googleapis.com/google.protobuf.Empty".to_owned(), ()))
-                                }
-                            )
+    let expected =
+        EventSourcedReply {
+            command_id: 56i64,
+            client_action: Some(
+                ClientAction {
+                    action: Some(
+                        Action::Reply(
+                            Reply {
+                                payload: Some(create_any("type.googleapis.com/google.protobuf.Empty".to_owned(), ()))
+                            }
+                        )
+                    )
+                }
+            ),
+            side_effects: vec![],
+            events: vec![ //TODO would be more informative if events are deserialized for the assertion
+                create_any("type.googleapis.com/com.example.shoppingcart.persistence.ItemAdded".to_owned(),
+                    ItemAdded {
+                        item: Some(
+                            LineItem {
+                                product_id: add_line_item.product_id.clone(),
+                                name: add_line_item.name.clone(),
+                                quantity: add_line_item.quantity,
+                            }
                         )
                     }
-                ),
-                side_effects: vec![],
-                events: vec![ //TODO would be more informative if events are deserialized for the assertion
-                    create_any("type.googleapis.com/com.example.shoppingcart.persistence.ItemAdded".to_owned(),
-                        ItemAdded {
-                            item: Some(
-                                LineItem {
-                                    product_id: add_line_item.product_id.clone(),
-                                    name: add_line_item.name.clone(),
-                                    quantity: add_line_item.quantity,
-                                }
-                            )
-                        }
-                    )
-                ],
-                snapshot: None,
-            }
-        );
+                )
+            ],
+            snapshot: None,
+        };
 
-        assert_eq!(note.message, Some(expected));
+    assert_eq!(reply1, expected);
 
+    while let Some(note) = inbound.message().await? {
         println!("Response = {:?}", note);
     }
 
     Ok(())
+}
+
+async fn expect_reply(inbound: &mut Streaming<EventSourcedStreamOut>) -> Option<EventSourcedReply> {
+    match inbound.message().await {
+        Ok(
+            Some(
+                EventSourcedStreamOut {
+                    message: Some(event_sourced_stream_out::Message::Reply(reply))
+                }
+            )
+        ) => Some(reply),
+        _ => None,
+    }
 }
 
 fn msgs_to_stream_in<T>(msgs: T) -> impl tonic::IntoStreamingRequest<Message = EventSourcedStreamIn>
