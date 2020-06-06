@@ -1,17 +1,17 @@
 
-use protocols::protocol::cloudstate::{
-    Command,
-    eventsourced::{
-        EventSourcedInit, EventSourcedStreamIn, EventSourcedSnapshot,
-        event_sourced_stream_in,
-        event_sourced_client::{EventSourcedClient}
-    },
-};
+use protocols::protocol::cloudstate::{Command, eventsourced::{
+    EventSourcedInit, EventSourcedStreamIn, EventSourcedSnapshot,
+    event_sourced_stream_in,
+    event_sourced_client::{EventSourcedClient},
+    event_sourced_stream_out,
+    EventSourcedReply
+}, ClientAction, Reply};
 use protocols::prost_example::shoppingcart::{
     AddLineItem,
     persistence::*,
 };
 use futures_util::stream;
+use protocols::protocol::cloudstate::client_action::Action;
 
 fn create_any(type_url: String, msg: impl ::prost::Message) -> ::prost_types::Any {
     let mut buf = vec![];
@@ -55,14 +55,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         product_id: "product_id".to_owned(),
         name: "Product Name".to_owned(),
         quantity: 1,
-        ..Default::default()
     };
 
     let cmd_msg = Message::Command(Command {
         entity_id: "shopcart_entity_id".to_string(),
         id: 56i64,
         name: "command_name".to_string(),
-        payload: Some(create_any("type.googleapis.com/com.example.shoppingcart.AddLineItem".to_owned(), add_line_item)),
+        payload: Some(create_any("type.googleapis.com/com.example.shoppingcart.AddLineItem".to_owned(), add_line_item.clone())),
         streamed: false,
     });
 
@@ -87,6 +86,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut inbound = response.into_inner();
 
     while let Some(note) = inbound.message().await? {
+
+        let expected = event_sourced_stream_out::Message::Reply(
+            EventSourcedReply {
+                command_id: 56i64,
+                client_action: Some(
+                    ClientAction {
+                        action: Some(
+                            Action::Reply(
+                                Reply {
+                                    payload: Some(create_any("type.googleapis.com/google.protobuf.Empty".to_owned(), ()))
+                                }
+                            )
+                        )
+                    }
+                ),
+                side_effects: vec![],
+                events: vec![ //TODO would be more informative if events are deserialized for the assertion
+                    create_any("type.googleapis.com/com.example.shoppingcart.persistence.ItemAdded".to_owned(),
+                        ItemAdded {
+                            item: Some(
+                                LineItem {
+                                    product_id: add_line_item.product_id.clone(),
+                                    name: add_line_item.name.clone(),
+                                    quantity: add_line_item.quantity,
+                                }
+                            )
+                        }
+                    )
+                ],
+                snapshot: None,
+            }
+        );
+
+        assert_eq!(note.message, Some(expected));
+
         println!("Response = {:?}", note);
     }
 
