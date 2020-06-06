@@ -11,6 +11,7 @@ use protocols::prost_example::shoppingcart::{
     AddLineItem,
     persistence::*,
 };
+use futures_util::stream;
 
 fn create_any(type_url: String, msg: impl ::prost::Message) -> ::prost_types::Any {
     let mut buf = vec![];
@@ -65,16 +66,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         streamed: false,
     });
 
-    let outbound = async_stream::stream! {
-        yield EventSourcedStreamIn {
-            message: Some(init_msg),
-        };
-        yield EventSourcedStreamIn {
-            message: Some(cmd_msg),
-        };
-    };
+    // let outbound = async_stream::stream! {
+    //     yield EventSourcedStreamIn {
+    //         message: Some(init_msg),
+    //     };
+    //     yield EventSourcedStreamIn {
+    //         message: Some(cmd_msg),
+    //     };
+    // };
+    // let response = client.handle(outbound).await?;
 
-    let response = client.handle(outbound).await?;
+    // let messages: Vec<_> = vec![init_msg, cmd_msg].iter()
+    //     .map(|msg| EventSourcedStreamIn { message: Some(msg.clone()) })
+    //     .collect();
+    // let response = client.handle(stream::iter(messages)).await?;
+
+    let stream_in = msgs_to_stream_in(vec![init_msg, cmd_msg]);
+    let response = client.handle(stream_in).await?;
 
     let mut inbound = response.into_inner();
 
@@ -84,3 +92,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+fn msgs_to_stream_in<T>(msgs: T) -> impl tonic::IntoStreamingRequest<Message = EventSourcedStreamIn>
+    where T: IntoIterator<Item = event_sourced_stream_in::Message>
+{
+    let messages: Vec<_> = msgs.into_iter()
+        .map(|msg| EventSourcedStreamIn { message: Some(msg.clone()) })
+        .collect();
+    stream::iter(messages)
+}
+
