@@ -69,21 +69,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         streamed: false,
     });
 
-    // let outbound = async_stream::stream! {
-    //     yield EventSourcedStreamIn {
-    //         message: Some(init_msg),
-    //     };
-    //     yield EventSourcedStreamIn {
-    //         message: Some(cmd_msg),
-    //     };
-    // };
-    // let response = client.handle(outbound).await?;
-
-    // let messages: Vec<_> = vec![init_msg, cmd_msg].iter()
-    //     .map(|msg| EventSourcedStreamIn { message: Some(msg.clone()) })
-    //     .collect();
-    // let response = client.handle(stream::iter(messages)).await?;
-
     let stream_in = msgs_to_stream_in(vec![init_msg, cmd_msg]);
     let response = client.handle(stream_in).await?;
 
@@ -97,39 +82,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let reply_msg: () = decode_any(reply_body).expect("Expected empty reply");
     assert_eq!(reply_msg, ());
 
-
-    let expected =
-        EventSourcedReply {
-            command_id: 56i64,
-            client_action: Some(
-                ClientAction {
-                    action: Some(
-                        Action::Reply(
-                            Reply {
-                                payload: Some(create_any("type.googleapis.com/google.protobuf.Empty".to_owned(), ()))
-                            }
-                        )
-                    )
-                }
-            ),
-            side_effects: vec![],
-            events: vec![ //TODO would be more informative if events are deserialized for the assertion
-                create_any("type.googleapis.com/com.example.shoppingcart.persistence.ItemAdded".to_owned(),
-                    ItemAdded {
-                        item: Some(
-                            LineItem {
-                                product_id: add_line_item.product_id.clone(),
-                                name: add_line_item.name.clone(),
-                                quantity: add_line_item.quantity,
-                            }
-                        )
-                    }
-                )
-            ],
-            snapshot: None,
-        };
-
-    assert_eq!(reply1, expected);
+    assert_eq!(reply1.events.len(), 1);
+    let item = decode_any::<ItemAdded>(reply1.events[0].clone())
+        .expect("Expect ItemAdded event")
+        .item.expect("Expect LineItem");
+    assert_eq!(item.product_id, add_line_item.product_id);
+    assert_eq!(item.name, add_line_item.name);
+    assert_eq!(item.quantity, add_line_item.quantity);
 
     while let Some(note) = inbound.message().await? {
         println!("Response = {:?}", note);
