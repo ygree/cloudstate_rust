@@ -14,6 +14,8 @@ use futures_util::stream;
 use protocols::protocol::cloudstate::client_action::Action;
 use tonic::Streaming;
 use protocols::protocol::cloudstate::eventsourced::EventSourcedStreamOut;
+use prost_types::Any;
+use bytes::Bytes;
 
 fn create_any(type_url: String, msg: impl ::prost::Message) -> ::prost_types::Any {
     let mut buf = vec![];
@@ -90,6 +92,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let reply1 = expect_reply(&mut inbound).await.expect("Expected Reply");
     assert_eq!(reply1.command_id, 56);
 
+    let reply_body = extract_action_reply_payload(&reply1).expect("Expected Action Reply");
+
+    let reply_msg: () = decode_any(reply_body).expect("Expected empty reply");
+    assert_eq!(reply_msg, ());
+
+
     let expected =
         EventSourcedReply {
             command_id: 56i64,
@@ -130,15 +138,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn decode_any<T>(any: prost_types::Any) -> Option<T>
+    where T: prost::Message + Default
+{
+    let bytes = Bytes::from(any.value);
+    <T as prost::Message>::decode(bytes).ok()
+}
+
+fn extract_action_reply_payload(reply: &EventSourcedReply) -> Option<Any> {
+    reply.client_action.iter()
+        .flat_map(|v| &v.action)
+        .flat_map(|v|
+            match v {
+                Action::Reply(r) => r.payload.clone(),
+                _ => None,
+            })
+        .last()
+}
+
 async fn expect_reply(inbound: &mut Streaming<EventSourcedStreamOut>) -> Option<EventSourcedReply> {
     match inbound.message().await {
-        Ok(
-            Some(
-                EventSourcedStreamOut {
+        Ok(Some(EventSourcedStreamOut {
                     message: Some(event_sourced_stream_out::Message::Reply(reply))
-                }
-            )
-        ) => Some(reply),
+                })) => Some(reply),
         _ => None,
     }
 }
