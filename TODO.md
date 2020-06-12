@@ -204,11 +204,9 @@ Introduce a new associated type: Response.
 
 ### :DONE: Pass all the Cloudstate TCK tests
 
-### --------------------------------------------------------------------------------------------------------------------
-
 ### :DONE: Use protobuf::well_known_types::Empty for the empty result.
 
-### :TODO: `shopping_cart_protobuf.rs` doesn't pass TCK test. It returns an empty cart for some reason.
+### :FIXED: `shopping_cart_protobuf.rs` doesn't pass TCK test. It returns an empty cart for some reason.
 
 ### :DONE: Fix Empty type_url inconsistency
 
@@ -222,6 +220,13 @@ Introduce a new associated type: Response.
 java.lang.IllegalStateException: Pool shutdown unexpectedly
 
 > Actually, it throws the same error for the Java sample TCK test.
+
+### --------------------------------------------------------------------------------------------------------------------
+
+### :TODO: Add more scenarios into shopcart-example
+
+### :TODO: Clean up server-spike from examples
+    Consider moving shopping_cart_protobuf.rs into an alternative binary crate into shopcart-example
 
 ### :TODO: rename `CommandDecoder` to something more descriptive
 

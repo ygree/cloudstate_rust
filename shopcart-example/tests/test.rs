@@ -103,6 +103,7 @@ fn test() {
     let mut client = rt
         .block_on(EventSourcedClient::connect("http://127.0.0.1:8088")).expect("Cannot start client");
 
+    //TODO implement multiple scenarios
     rt.block_on(simple_test(&mut client)).expect("test failed")
 }
 
