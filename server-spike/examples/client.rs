@@ -74,25 +74,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut inbound = response.into_inner();
 
-    let reply1 = expect_reply(&mut inbound).await.expect("Expected Reply");
-    assert_eq!(reply1.command_id, 56);
+    {
+        let reply1 = expect_reply(&mut inbound).await.expect("Expected Reply");
+        assert_eq!(reply1.command_id, 56);
 
-    let reply_body = extract_action_reply_payload(&reply1).expect("Expected Action Reply");
+        let reply_body = extract_action_reply_payload(&reply1).expect("Expected Action Reply");
 
-    let reply_msg: () = decode_any(reply_body).expect("Expected empty reply");
-    assert_eq!(reply_msg, ());
+        let reply_msg: () = decode_any(reply_body).expect("Expected empty reply");
+        assert_eq!(reply_msg, ());
 
-    assert_eq!(reply1.events.len(), 1);
-    let item = decode_any::<ItemAdded>(reply1.events[0].clone())
-        .expect("Expect ItemAdded event")
-        .item.expect("Expect LineItem");
-    assert_eq!(item.product_id, add_line_item.product_id);
-    assert_eq!(item.name, add_line_item.name);
-    assert_eq!(item.quantity, add_line_item.quantity);
-
-    while let Some(note) = inbound.message().await? {
-        println!("Response = {:?}", note);
+        assert_eq!(reply1.events.len(), 1);
+        let item = decode_any::<ItemAdded>(reply1.events[0].clone())
+            .expect("Expect ItemAdded event")
+            .item.expect("Expect LineItem");
+        assert_eq!(item.product_id, add_line_item.product_id);
+        assert_eq!(item.name, add_line_item.name);
+        assert_eq!(item.quantity, add_line_item.quantity);
     }
+
+    assert_eq!(inbound.message().await?, None);
+
+    // while let Some(note) = inbound.message().await? {
+    //     println!("Response = {:?}", note);
+    // }
 
     Ok(())
 }
