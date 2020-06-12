@@ -1,0 +1,29 @@
+[package]
+name = "shopcart-example"
+version = "0.1.0"
+authors = ["Yury Gribkov <yury.gribkov@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cloudstate-core = { path = "../cloudstate-core" }
+cloudstate-prost-derive = { path = "../cloudstate-prost-derive" }
+server-spike = { path = "../server-spike" }
+protocols = { path = "../protocols" }
+tonic = "0.2"
+prost = "0.6"
+prost-types = "0.6"
+tokio = { version = "0.2", features = ["rt-threaded", "time", "stream", "fs", "macros", "uds"] }
+futures = { version = "0.3", default-features = false, features = ["alloc"] }
+async-stream = "0.2"
+tower = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rand = "0.7"
+bytes = "0.5.4"
+protobuf = { version = "2", features = ["with-bytes"] }
+futures-util = "0.3.5"
+
+[dev-dependencies]
+assert_cmd = "0.12.0"
