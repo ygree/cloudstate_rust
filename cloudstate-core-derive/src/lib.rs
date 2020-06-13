@@ -5,7 +5,7 @@ use syn::{self, parse_macro_input, Fields, FieldsUnnamed, Field, Type, Result, T
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
 
-#[proc_macro_derive(CommandDecoder, attributes(package))]
+#[proc_macro_derive(AnyMessage, attributes(package))]
 pub fn cloudstate_prost_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     impl_command_macro(&ast)
@@ -127,7 +127,7 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
     }).collect();
 
     let gen = quote! {
-        impl CommandDecoder for #type_name {
+        impl AnyMessage for #type_name {
             fn decode(type_url: &str, bytes: Bytes) -> Option<Self> {
                 match type_url {
                     #(#items)*

@@ -225,7 +225,7 @@ java.lang.IllegalStateException: Pool shutdown unexpectedly
 
 ### :TODO: Add more scenarios into shopcart-example
 
-### :TODO: Clean up server-spike from examples
+### :DONE: Clean up server-spike from examples
     Consider moving shopping_cart_protobuf.rs into an alternative binary crate into shopcart-example
 
 ### :TODO: rename `CommandDecoder` to something more descriptive

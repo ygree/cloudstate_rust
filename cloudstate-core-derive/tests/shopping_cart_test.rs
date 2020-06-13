@@ -1,7 +1,7 @@
 use ::prost::Message;
 use bytes::Bytes;
-use cloudstate_core::CommandDecoder;
-use cloudstate_message_derive::CommandDecoder;
+use cloudstate_core::AnyMessage;
+use cloudstate_core_derive::AnyMessage;
 
 mod shopping_cart;
 use shopping_cart::*;
@@ -9,7 +9,7 @@ use shopping_cart::*;
 //TODO Fix these tests. They've been built for Prost but now the macro generates code for protobuf.
 
 #[package = "com.example.shoppingcart"]
-#[derive(CommandDecoder, Debug, PartialEq)]
+#[derive(AnyMessage, Debug, PartialEq)]
 pub enum ShoppingCartCommand {
     AddLine(AddLineItem),
     RemoveLine(RemoveLineItem),
@@ -21,7 +21,7 @@ fn test_command_decoder() {
 
     let bytes = encode(&msg);
 
-    let result = <ShoppingCartCommand as CommandDecoder>::decode("type.googleapis.com/com.example.shoppingcart.AddLineItem".to_owned(), bytes);
+    let result = <ShoppingCartCommand as AnyMessage>::decode("type.googleapis.com/com.example.shoppingcart.AddLineItem".to_owned(), bytes);
 
     assert_eq!(result, Some(ShoppingCartCommand::AddLine(msg)));
 }
@@ -31,7 +31,7 @@ fn test_command_decoder_with_incorrect_type() {
 
     let bytes = encode(&msg);
 
-    let result = <ShoppingCartCommand as CommandDecoder>::decode("AddLineItem".to_owned(), bytes);
+    let result = <ShoppingCartCommand as AnyMessage>::decode("AddLineItem".to_owned(), bytes);
 
     assert_eq!(result, None);
 }

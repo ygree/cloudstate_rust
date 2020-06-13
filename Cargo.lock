@@ -76,7 +76,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cloudstate-message-derive"
+name = "cloudstate-core-derive"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -787,7 +787,7 @@ dependencies = [
  "async-stream",
  "bytes",
  "cloudstate-core",
- "cloudstate-message-derive",
+ "cloudstate-core-derive",
  "cloudstate-server",
  "futures",
  "futures-util",

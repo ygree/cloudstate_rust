@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use std::marker::PhantomData;
-use crate::CommandDecoder;
+use crate::AnyMessage;
 
 pub type MaybeEntityHandler = Option<Box<dyn EventSourcedEntityHandler + Send + Sync>>;
 
@@ -65,7 +65,7 @@ impl<T> HandleCommandContext for CommandHandlerContext<T> {
     }
 }
 
-pub enum Response<T: CommandDecoder> {
+pub enum Response<T: AnyMessage> {
     Reply(T),
     EmptyReply,
     // Forward,
@@ -78,16 +78,16 @@ pub enum Response<T: CommandDecoder> {
 pub trait EventSourcedEntity {
 
     // Entity can only have one type of snapshot thus it's an associated type instead of a trait's type parameter
-    type Command : CommandDecoder;
-    type Event : CommandDecoder;
-    type Snapshot : CommandDecoder;
-    type Response : CommandDecoder;
+    type Command : AnyMessage;
+    type Event : AnyMessage;
+    type Snapshot : AnyMessage;
+    type Response : AnyMessage;
 
     fn restore(&mut self, snapshot: Self::Snapshot);
 
     // This method is called by server and need to bind to the entity typed and delegate call to the user implementation
     fn snapshot_received(&mut self, type_url: String, bytes: Bytes) {
-        if let Some(snapshot) = <Self::Snapshot as CommandDecoder>::decode(&type_url, bytes) {
+        if let Some(snapshot) = <Self::Snapshot as AnyMessage>::decode(&type_url, bytes) {
             println!("Received snapshot!");
             self.restore(snapshot);
         } else {
@@ -97,7 +97,7 @@ pub trait EventSourcedEntity {
 
     fn command_received(&mut self, type_url: String, bytes: Bytes) -> EntityResponse {
         println!("Handing received command {}", &type_url);
-        if let Some(cmd) = <Self::Command as CommandDecoder>::decode(&type_url, bytes) {
+        if let Some(cmd) = <Self::Command as AnyMessage>::decode(&type_url, bytes) {
 
             let mut context = CommandHandlerContext {
                 events: vec![],
@@ -106,7 +106,7 @@ pub trait EventSourcedEntity {
             let result = self.handle_command(cmd, &mut context);
 
             let events = context.events.iter().flat_map(|e| {
-                match <Self::Event as CommandDecoder>::encode(&e) {
+                match <Self::Event as AnyMessage>::encode(&e) {
                     Some((type_id, bytes)) => Some((type_id, Bytes::from(bytes))),
                     _ => None,
                 }
@@ -120,7 +120,7 @@ pub trait EventSourcedEntity {
 
             let action: EntityAction = match result {
                 Ok(Response::Reply(resp)) => {
-                    match <Self::Response as CommandDecoder>::encode(&resp) {
+                    match <Self::Response as AnyMessage>::encode(&resp) {
                         Some((type_url, bytes)) => {
                             EntityAction::Reply {
                                 type_url,
@@ -164,7 +164,7 @@ pub trait EventSourcedEntity {
     fn event_received(&mut self, type_url: String, bytes: Bytes) {
         println!("Handing received event {}", &type_url);
 
-        if let Some(evt) = <Self::Event as CommandDecoder>::decode(&type_url, bytes) {
+        if let Some(evt) = <Self::Event as AnyMessage>::decode(&type_url, bytes) {
             self.handle_event(evt);
         }
     }

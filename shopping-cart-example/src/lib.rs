@@ -11,8 +11,8 @@ use protocols::prost_example::{
                    persistence::{Cart, ItemAdded, ItemRemoved, LineItem},},
 };
 use prost::Message;
-use cloudstate_message_derive::CommandDecoder;
-use cloudstate_core::CommandDecoder;
+use cloudstate_core::AnyMessage;
+use cloudstate_core_derive::AnyMessage;
 use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, HandleCommandContext, Response};
 use cloudstate_server::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
 use std::collections::BTreeMap;
@@ -43,7 +43,7 @@ pub async fn run(host_port: &str) -> Result<(), tonic::transport::Error> {
 
 // Commands
 #[package="com.example.shoppingcart"]
-#[derive(CommandDecoder)]
+#[derive(AnyMessage)]
 pub enum ShoppingCartCommand {
     AddLine(AddLineItem),
     RemoveLine(RemoveLineItem),
@@ -52,14 +52,14 @@ pub enum ShoppingCartCommand {
     // GetCart2(GetShoppingCart, &mut shoppingcart::Cart), //TODO or this way
 }
 
-#[derive(CommandDecoder)]
+#[derive(AnyMessage)]
 #[package="com.example.shoppingcart"]
 pub enum ShoppingCartReply {
     Cart(shoppingcart::Cart),
 }
 
 // Events
-#[derive(CommandDecoder)]
+#[derive(AnyMessage)]
 #[package="com.example.shoppingcart.persistence"]
 pub enum ShoppingCartEvent {
     ItemAdded(ItemAdded),
@@ -67,7 +67,7 @@ pub enum ShoppingCartEvent {
 }
 
 // Snapshot
-#[derive(CommandDecoder)]
+#[derive(AnyMessage)]
 #[package="com.example.shoppingcart.persistence"]
 pub enum ShoppingCartSnapshot {
     Snapshot(Cart),

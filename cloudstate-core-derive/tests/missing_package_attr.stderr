@@ -9,7 +9,7 @@ warning: associated type `handleStream` should have an upper camel case name
 error: proc-macro derive panicked
   --> $DIR/missing_package_attr.rs:10:10
    |
-10 | #[derive(CommandDecoder)]
+10 | #[derive(AnyMessage)]
    |          ^^^^^^^^^^^^^^
    |
    = help: message: Not found package attribute!
