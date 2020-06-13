@@ -17,9 +17,25 @@ use prost_types::Any;
 use bytes::Bytes;
 use tokio::runtime::Runtime;
 use tonic::transport::Channel;
-use assert_cmd::prelude::*;
 use std::thread::sleep;
-use std::time; // Add methods on commands
+use std::time;
+use shopcart_example::run; // Add methods on commands
+
+#[test]
+fn test() {
+
+    let mut rt = Runtime::new().unwrap();
+
+    // Running the server for tests within the same process to make sure it's stopped
+    // when a test assertion fails
+    rt.spawn(run("0.0.0.0:8088"));
+
+    let mut client = rt.block_on(EventSourcedClient::connect("http://127.0.0.1:8088"))
+        .expect("Cannot start client");
+
+    //TODO implement multiple scenarios
+    rt.block_on(simple_test(&mut client)).expect("test failed");
+}
 
 async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box<dyn std::error::Error>> {
 
@@ -55,7 +71,7 @@ async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box
 
     let cmd_msg = Message::Command(Command {
         entity_id: "shopcart_entity_id".to_string(),
-        id: 56i64,
+        id: 56,
         name: "command_name".to_string(),
         payload: Some(create_any("type.googleapis.com/com.example.shoppingcart.AddLineItem".to_owned(), add_line_item.clone())),
         streamed: false,
@@ -68,7 +84,7 @@ async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box
 
     {
         let reply1 = expect_reply(&mut inbound).await.expect("Expected Reply");
-        assert_eq!(reply1.command_id, 561);
+        assert_eq!(reply1.command_id, 56);
 
         let reply_body = extract_action_reply_payload(&reply1).expect("Expected Action Reply");
 
@@ -88,33 +104,6 @@ async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box
 
 
     Ok(())
-}
-
-
-#[test]
-fn test() {
-
-    //TODO how to make sure that we terminate the shopping-cart example server even if the tests panic?
-    let mut child = std::process::Command::cargo_bin("shopcart-example")
-        .expect("Couldn't find shopcart-example")
-        .spawn()
-        .expect("Couldn't start shopcart-example");
-
-    println!("Starting shopcart-example: {}", child.id());
-
-    // std::panic::set_hook(Box::new(|pi| {
-    // }));
-
-    // Wait a little for the application bind to the port before running tests
-    sleep(time::Duration::from_millis(100));
-
-    let mut rt = Runtime::new().unwrap();
-
-    let mut client = rt
-        .block_on(EventSourcedClient::connect("http://127.0.0.1:8088")).expect("Cannot start client");
-
-    //TODO implement multiple scenarios
-    rt.block_on(simple_test(&mut client)).expect("test failed");
 }
 
 fn create_any(type_url: String, msg: impl ::prost::Message) -> ::prost_types::Any {
