@@ -3,9 +3,8 @@
 members = [
     "cloudstate-core",
     "cloudstate-core-derive",
-    "protocols",
-    "entity-spike",
     "cloudstate-server",
+    "protocols",
     "shopping-cart-example",
 ]
 
