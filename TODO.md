@@ -221,14 +221,14 @@ java.lang.IllegalStateException: Pool shutdown unexpectedly
 
 > Actually, it throws the same error for the Java sample TCK test.
 
-### --------------------------------------------------------------------------------------------------------------------
-
-### :TODO: Add more scenarios into shopcart-example
-
 ### :DONE: Clean up server-spike from examples
     Consider moving shopping_cart_protobuf.rs into an alternative binary crate into shopcart-example
 
-### :TODO: rename `CommandDecoder` to something more descriptive
+### :DONE: rename `CommandDecoder` to something more descriptive
+
+### --------------------------------------------------------------------------------------------------------------------
+
+### :TODO: Add more scenarios into shopcart-example
 
 ### :TODO: introduce a builder for service discovery 
 
@@ -236,7 +236,6 @@ java.lang.IllegalStateException: Pool shutdown unexpectedly
     Doesn't seem so. The only place it has the package name encoded is the file descriptor.
 
 ### :TODO: command-macro-derive tests are fragile because they match exact compilation error and it depends on the `server-spike` module that makes it very fragile. The only need for the dependency is the CommandDecoder trait. Moving it to more stable crate should resolve this issue.
-    
         
 ### :TODO: Integrate into Cloudstate TCK        
 
