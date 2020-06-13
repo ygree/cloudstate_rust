@@ -36,34 +36,6 @@ fn main() {
         .expect("failed to compile protos");
     //TODO implement a custom ServiceGenerator to generate service specific command types with access to package name for unmarshaling code generation.
 
-
-    // Generate Rust code for the user service messages with rust `protobuf` instead of `prost`.
-    // protobuf_codegen_pure::Codegen::new()
-    protoc_rust::Codegen::new()
-        .out_dir("src/example")
-        .inputs(&[
-            "example/shoppingcart/persistence/domain.proto",
-            "example/shoppingcart/shoppingcart.proto",
-        ])
-        .includes(&[
-            "example",
-            "frontend",
-            ".", // needed for google any/descriptor/empty
-        ]).run().expect("protoc");
-
-    // generate google protobuf stuff for file descriptors
-    protoc_rust::Codegen::new()
-        .out_dir("src/google/protobuf")
-        .inputs(&[
-            "google/protobuf/empty.proto",
-        ])
-        .includes(&[
-            // "example",
-            // "frontend",
-            ".", // needed for google any/descriptor/empty
-        ]).run().expect("protoc");
-
-
     generate_example_file_descriptor_set();
 }
 

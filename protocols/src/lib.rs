@@ -8,19 +8,8 @@ pub mod protocol {
 }
 
 pub mod example {
-    // protobuf
-
-    pub mod shoppingcart;
-    pub mod domain;
-
     pub fn shopping_cart_descriptor_set() -> &'static [u8] {
         include_bytes!("shoppingcart.desc")
-    }
-}
-
-pub mod google {
-    pub mod protobuf {
-        pub mod empty;
     }
 }
 
