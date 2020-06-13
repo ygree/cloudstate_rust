@@ -14,11 +14,10 @@ use prost::Message;
 use cloudstate_prost_derive::CommandDecoder;
 use cloudstate_core::CommandDecoder;
 use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, HandleCommandContext, Response};
-use server_spike::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
+use cloudstate_server::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
 use std::collections::BTreeMap;
 
 pub async fn run(host_port: &str) -> Result<(), tonic::transport::Error> {
-    // let addr = "[::1]:8088".parse().unwrap();
     let addr = host_port.parse().unwrap();
 
     let mut registry = EntityRegistry(vec![]);

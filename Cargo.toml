@@ -6,7 +6,7 @@ members = [
     "cloudstate-prost-derive",
     "protocols",
     "entity-spike",
-    "server-spike",
+    "cloudstate-server",
     "shopping-cart-example",
 ]
 
