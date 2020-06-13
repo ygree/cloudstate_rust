@@ -54,11 +54,11 @@ async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box
 
     use event_sourced_stream_in::Message;
 
-    let init_msg = Message::Init(EventSourcedInit{
+    let init_msg = EventSourcedInit{
         service_name: "com.example.shoppingcart.ShoppingCart".to_string(),
         entity_id: "shopcart_entity_id".to_string(),
         snapshot: Some(snapshot),
-    });
+    };
 
     let add_line_item = AddLineItem {
         user_id: "user_id".to_owned(),
@@ -67,30 +67,31 @@ async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box
         quantity: 1,
     };
 
-    let cmd_msg = Message::Command(Command {
+    let cmd_msg = Command {
         entity_id: "shopcart_entity_id".to_string(),
         id: 56,
         name: "command_name".to_string(),
         payload: Some(create_any("type.googleapis.com/com.example.shoppingcart.AddLineItem".to_owned(), add_line_item.clone())),
         streamed: false,
-    });
+    };
 
-    let stream_in = msgs_to_stream_in(vec![init_msg, cmd_msg]);
+    let stream_in = msgs_to_stream_in(vec![
+        Message::Init(init_msg),
+        Message::Command(cmd_msg.clone())]
+    );
     let response = client.handle(stream_in).await?;
 
     let mut inbound = response.into_inner();
 
     {
         let reply1 = expect_reply(&mut inbound).await.expect("Expected Reply");
-        assert_eq!(reply1.command_id, 56);
+        assert_eq!(reply1.command_id, cmd_msg.id);
 
-        let reply_body = extract_action_reply_payload(&reply1).expect("Expected Action Reply");
-
-        let reply_msg: () = decode_any(reply_body).expect("Expected empty reply");
-        assert_eq!(reply_msg, ());
+        let reply_body = reply1.reply_payload().expect("Expected Action Reply");
+        reply_body.decode::<Any>().expect("Expected empty reply");
 
         assert_eq!(reply1.events.len(), 1);
-        let item = decode_any::<ItemAdded>(reply1.events[0].clone())
+        let item = reply1.events[0].clone().decode::<ItemAdded>()
             .expect("Expect ItemAdded event")
             .item.expect("Expect LineItem");
         assert_eq!(item.product_id, add_line_item.product_id);
@@ -104,6 +105,35 @@ async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box
     Ok(())
 }
 
+trait EventSourcedReplyExt {
+    fn reply_payload(&self) -> Option<Any>;
+}
+
+impl EventSourcedReplyExt for EventSourcedReply {
+    fn reply_payload(&self) -> Option<Any> {
+        self.client_action.iter()
+            .flat_map(|v| &v.action)
+            .flat_map(|v|
+                match v {
+                    Action::Reply(r) => r.payload.clone(),
+                    _ => None,
+                })
+            .last()
+    }
+}
+
+trait AnyExt {
+    fn decode<T>(self) -> Option<T>
+        where T: prost::Message + Default;
+}
+
+impl AnyExt for Any {
+    fn decode<T>(self) -> Option<T> where T: prost::Message + Default {
+        let bytes = Bytes::from(self.value);
+        <T as prost::Message>::decode(bytes).ok()
+    }
+}
+
 fn create_any(type_url: String, msg: impl ::prost::Message) -> ::prost_types::Any {
     let mut buf = vec![];
     msg.encode(&mut buf); //TODO returns Result
@@ -111,24 +141,6 @@ fn create_any(type_url: String, msg: impl ::prost::Message) -> ::prost_types::An
         type_url,
         value: buf,
     }
-}
-
-fn decode_any<T>(any: prost_types::Any) -> Option<T>
-    where T: prost::Message + Default
-{
-    let bytes = Bytes::from(any.value);
-    <T as prost::Message>::decode(bytes).ok()
-}
-
-fn extract_action_reply_payload(reply: &EventSourcedReply) -> Option<Any> {
-    reply.client_action.iter()
-        .flat_map(|v| &v.action)
-        .flat_map(|v|
-            match v {
-                Action::Reply(r) => r.payload.clone(),
-                _ => None,
-            })
-        .last()
 }
 
 async fn expect_reply(inbound: &mut Streaming<EventSourcedStreamOut>) -> Option<EventSourcedReply> {
