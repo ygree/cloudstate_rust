@@ -84,7 +84,7 @@ async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box
     let mut inbound = response.into_inner();
 
     {
-        let reply1 = expect_reply(&mut inbound).await.expect("Expected Reply");
+        let reply1 = inbound.expect_reply().await.expect("Expected Reply");
         assert_eq!(reply1.command_id, cmd_msg.id);
 
         let reply_body = reply1.reply_payload().expect("Expected Action Reply");
@@ -103,6 +103,23 @@ async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box
 
 
     Ok(())
+}
+
+#[tonic::async_trait]
+trait StreamingEventSourcedStreamOutExt {
+    async fn expect_reply(&mut self) -> Option<EventSourcedReply>;
+}
+
+#[tonic::async_trait]
+impl StreamingEventSourcedStreamOutExt for Streaming<EventSourcedStreamOut> {
+    async fn expect_reply(&mut self) -> Option<EventSourcedReply> {
+        match self.message().await {
+            Ok(Some(EventSourcedStreamOut {
+                        message: Some(event_sourced_stream_out::Message::Reply(reply))
+                    })) => Some(reply),
+            _ => None,
+        }
+    }
 }
 
 trait EventSourcedReplyExt {
@@ -140,15 +157,6 @@ fn create_any(type_url: String, msg: impl ::prost::Message) -> ::prost_types::An
     ::prost_types::Any {
         type_url,
         value: buf,
-    }
-}
-
-async fn expect_reply(inbound: &mut Streaming<EventSourcedStreamOut>) -> Option<EventSourcedReply> {
-    match inbound.message().await {
-        Ok(Some(EventSourcedStreamOut {
-                    message: Some(event_sourced_stream_out::Message::Reply(reply))
-                })) => Some(reply),
-        _ => None,
     }
 }
 
