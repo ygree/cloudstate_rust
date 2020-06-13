@@ -17,8 +17,6 @@ use prost_types::Any;
 use bytes::Bytes;
 use tokio::runtime::Runtime;
 use tonic::transport::Channel;
-use std::thread::sleep;
-use std::time;
 use shopcart_example::run; // Add methods on commands
 
 #[test]

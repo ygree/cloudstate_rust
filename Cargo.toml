@@ -7,7 +7,7 @@ members = [
     "protocols",
     "entity-spike",
     "server-spike",
-    "shopcart-example",
+    "shopping-cart-example",
 ]
 
 [patch.crates-io]
