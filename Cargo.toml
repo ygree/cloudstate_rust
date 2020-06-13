@@ -2,7 +2,6 @@
 
 members = [
     "cloudstate-core",
-    "cloudstate-protobuf-derive",
     "cloudstate-prost-derive",
     "protocols",
     "entity-spike",
