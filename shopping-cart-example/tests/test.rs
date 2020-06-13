@@ -1,27 +1,29 @@
 
-use protocols::protocol::cloudstate::{Command, eventsourced::{
-    EventSourcedInit, EventSourcedStreamIn, EventSourcedStreamOut, EventSourcedSnapshot,
-    event_sourced_client::EventSourcedClient,
-    event_sourced_stream_in,
-    event_sourced_stream_out,
-    EventSourcedReply
-}, ClientAction, Reply};
+use bytes::Bytes;
+use futures_util::stream;
+use protocols::protocol::cloudstate::{
+    Command, ClientAction, Reply,
+    client_action::Action,
+    eventsourced::{
+        EventSourcedInit, EventSourcedStreamIn, EventSourcedStreamOut, EventSourcedSnapshot,
+        event_sourced_client::EventSourcedClient,
+        event_sourced_stream_in,
+        event_sourced_stream_out,
+        EventSourcedReply
+    },
+};
 use protocols::prost_example::shoppingcart::{
     AddLineItem,
     persistence::*,
 };
-use futures_util::stream;
-use protocols::protocol::cloudstate::client_action::Action;
-use tonic::Streaming;
 use prost_types::Any;
-use bytes::Bytes;
-use tokio::runtime::Runtime;
+use tonic::{Streaming, IntoStreamingRequest, Request};
 use tonic::transport::Channel;
-use shopcart_example::run; // Add methods on commands
+use tokio::runtime::Runtime;
+use shopcart_example::run;
 
 #[test]
 fn test() {
-
     let mut rt = Runtime::new().unwrap();
 
     // Running the server for tests within the same process to make sure it's stopped
@@ -75,11 +77,11 @@ async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box
         streamed: false,
     };
 
-    let stream_in = msgs_to_stream_in(vec![
+    let requests = msgs_to_stream_in(vec![
         Message::Init(init_msg),
         Message::Command(cmd_msg.clone())]
     );
-    let response = client.handle(stream_in).await?;
+    let response = client.handle(requests).await?;
 
     let mut inbound = response.into_inner();
 
@@ -100,7 +102,6 @@ async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box
     }
 
     assert_eq!(inbound.message().await?, None);
-
 
     Ok(())
 }
