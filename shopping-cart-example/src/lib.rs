@@ -11,7 +11,7 @@ use protocols::prost_example::{
                    persistence::{Cart, ItemAdded, ItemRemoved, LineItem},},
 };
 use prost::Message;
-use cloudstate_prost_derive::CommandDecoder;
+use cloudstate_message_derive::CommandDecoder;
 use cloudstate_core::CommandDecoder;
 use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, HandleCommandContext, Response};
 use cloudstate_server::{EventSourcedServerImpl, EntityDiscoveryServerImpl};

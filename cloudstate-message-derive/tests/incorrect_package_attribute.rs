@@ -1,9 +1,9 @@
-use cloudstate_prost_derive::CommandDecoder;
+use cloudstate_message_derive::CommandDecoder;
 
 mod shopping_cart;
 use shopping_cart::*;
 
-#[package]
+#[package("com.example.shoppingcart")]
 #[derive(CommandDecoder)]
 pub enum ShoppingCartCommand {
     AddLine(AddLineItem),

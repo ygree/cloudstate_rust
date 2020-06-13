@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 cloudstate-core = { path = "../cloudstate-core" }
-cloudstate-prost-derive = { path = "../cloudstate-prost-derive" }
+cloudstate-message-derive = { path = "../cloudstate-message-derive" }
 cloudstate-server = { path = "../cloudstate-server" }
 protocols = { path = "../protocols" }
 tonic = "0.2"

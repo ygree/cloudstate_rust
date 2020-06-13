@@ -1,5 +1,5 @@
 [package]
-name = "cloudstate-prost-derive"
+name = "cloudstate-message-derive"
 version = "0.1.0"
 authors = ["Yury Gribkov <yury.gribkov@gmail.com>"]
 edition = "2018"

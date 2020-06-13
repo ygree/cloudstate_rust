@@ -2,7 +2,7 @@
 
 members = [
     "cloudstate-core",
-    "cloudstate-prost-derive",
+    "cloudstate-message-derive",
     "protocols",
     "entity-spike",
     "cloudstate-server",
