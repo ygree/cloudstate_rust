@@ -40,7 +40,7 @@ async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box
     let item1 = LineItem {
         product_id: "soap33".to_string(),
         name: "soap".to_string(),
-        quantity: 12i32,
+        quantity: 12,
     };
 
     let cart = Cart {
@@ -48,8 +48,8 @@ async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box
     };
 
     let snapshot = EventSourcedSnapshot {
-        snapshot_sequence: 42i64,
-        snapshot: Some(create_any("type.googleapis.com/com.example.shoppingcart.persistence.Cart".to_string(), cart)),
+        snapshot_sequence: 42,
+        snapshot: Some(cart.to_any("type.googleapis.com/com.example.shoppingcart.persistence.Cart")),
     };
 
     use event_sourced_stream_in::Message;
@@ -71,7 +71,7 @@ async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box
         entity_id: "shopcart_entity_id".to_string(),
         id: 56,
         name: "command_name".to_string(),
-        payload: Some(create_any("type.googleapis.com/com.example.shoppingcart.AddLineItem".to_owned(), add_line_item.clone())),
+        payload: Some(add_line_item.clone().to_any("type.googleapis.com/com.example.shoppingcart.AddLineItem")),
         streamed: false,
     };
 
@@ -151,12 +151,20 @@ impl AnyExt for Any {
     }
 }
 
-fn create_any(type_url: String, msg: impl ::prost::Message) -> ::prost_types::Any {
-    let mut buf = vec![];
-    msg.encode(&mut buf); //TODO returns Result
-    ::prost_types::Any {
-        type_url,
-        value: buf,
+trait ProstMessageExt {
+    fn to_any(&self, type_url: &str) -> Any;
+}
+
+impl<T> ProstMessageExt for T
+    where T: ::prost::Message {
+
+    fn to_any(&self, type_url: &str) -> Any {
+        let mut buf = vec![];
+        self.encode(&mut buf); //TODO returns Result
+        ::prost_types::Any {
+            type_url: type_url.to_owned(),
+            value: buf,
+        }
     }
 }
 
