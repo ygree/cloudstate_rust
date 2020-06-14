@@ -2,8 +2,7 @@
 use bytes::Bytes;
 use futures_util::stream;
 use protocols::protocol::cloudstate::{
-    Command, ClientAction, Reply,
-    client_action::Action,
+    Command, client_action::Action,
     eventsourced::{
         EventSourcedInit, EventSourcedStreamIn, EventSourcedStreamOut, EventSourcedSnapshot,
         event_sourced_client::EventSourcedClient,
@@ -11,6 +10,7 @@ use protocols::protocol::cloudstate::{
         event_sourced_stream_out,
         EventSourcedReply
     },
+    entity_discovery_client::EntityDiscoveryClient, ProxyInfo
 };
 use protocols::prost_example::shoppingcart::{
     AddLineItem,
@@ -21,6 +21,7 @@ use tonic::{Streaming, IntoStreamingRequest, Request};
 use tonic::transport::Channel;
 use tokio::runtime::Runtime;
 use shopcart_example::run;
+use protocols::protocol::cloudstate::entity_discovery_server::EntityDiscovery;
 
 #[test]
 fn test() {
@@ -30,14 +31,41 @@ fn test() {
     // when a test assertion fails
     rt.spawn(run("0.0.0.0:8088"));
 
-    let mut client = rt.block_on(EventSourcedClient::connect("http://127.0.0.1:8088"))
-        .expect("Cannot start client");
+    let mut entity_discovery_client = rt.block_on(EntityDiscoveryClient::connect("http://127.0.0.1:8088"))
+        .expect("Cannot start entity discovery client");
 
-    //TODO implement multiple scenarios
-    rt.block_on(simple_test(&mut client)).expect("test failed");
+    let mut event_sourced_client = rt.block_on(EventSourcedClient::connect("http://127.0.0.1:8088"))
+        .expect("Cannot start event sourced client");
+
+    //TODO implement more scenarios
+    rt.block_on(discovery_test(&mut entity_discovery_client)).expect("test failed");
+    rt.block_on(event_sourced_test(&mut event_sourced_client)).expect("test failed");
 }
 
-async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box<dyn std::error::Error>> {
+async fn discovery_test(client: &mut EntityDiscoveryClient<Channel>) -> Result<(), Box<dyn std::error::Error>> {
+    // verify that the user function process responds
+
+    let proxy_info = ProxyInfo {
+        protocol_major_version: 0,
+        protocol_minor_version: 1,
+        proxy_name: "test".to_owned(),
+        proxy_version: "0.1".to_owned(),
+        supported_entity_types: vec!["cloudstate.eventsourced.EventSourced".to_owned()]
+    };
+
+    let entity_spec = client.discover(proxy_info).await.expect("Expected response");
+    let message = entity_spec.get_ref();
+
+    assert!(!message.proto.is_empty());
+    let entity = message.entities.first().expect("Expected one entity");
+    assert_eq!(entity.entity_type, "cloudstate.eventsourced.EventSourced");
+    assert_eq!(entity.service_name, "com.example.shoppingcart.ShoppingCart");
+    assert_eq!(entity.persistence_id, "shopping_cart");
+
+    Ok(())
+}
+
+async fn event_sourced_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box<dyn std::error::Error>> {
 
     let item1 = LineItem {
         product_id: "soap33".to_string(),
@@ -93,8 +121,7 @@ async fn simple_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box
         reply_body.decode::<Any>().expect("Expected empty reply");
 
         assert_eq!(reply1.events.len(), 1);
-        let item = reply1.events[0].clone().decode::<ItemAdded>()
-            .expect("Expect ItemAdded event")
+        let item = reply1.events[0].clone().decode::<ItemAdded>().expect("Expect ItemAdded event")
             .item.expect("Expect LineItem");
         assert_eq!(item.product_id, add_line_item.product_id);
         assert_eq!(item.name, add_line_item.name);
