@@ -13,38 +13,41 @@ use protocols::protocol::cloudstate::{
     entity_discovery_client::EntityDiscoveryClient, ProxyInfo
 };
 use protocols::prost_example::shoppingcart::{
-    AddLineItem,
-    persistence::*,
+    AddLineItem, persistence::*,
 };
 use prost_types::Any;
-use tonic::{Streaming, IntoStreamingRequest, Request};
-use tonic::transport::Channel;
+use tonic::{
+    Streaming, transport::Channel,
+};
 use tokio::runtime::Runtime;
 use shopcart_example::run;
-use protocols::protocol::cloudstate::entity_discovery_server::EntityDiscovery;
+use std::net::SocketAddr;
 
 #[test]
 fn test() {
+    let host = "127.0.0.1";
+    let port = 8080;
+    let addr = format!("http://{}:{}", host, port);
+
     let mut rt = Runtime::new().unwrap();
 
     // Running the server for tests within the same process to make sure it's stopped
     // when a test assertion fails
-    rt.spawn(run("0.0.0.0:8088"));
+    let bind_addr = format!("0.0.0.0:{}", port);
+    rt.spawn(run(bind_addr));
 
-    let mut entity_discovery_client = rt.block_on(EntityDiscoveryClient::connect("http://127.0.0.1:8088"))
+    let mut entity_discovery_client = rt.block_on(EntityDiscoveryClient::connect(addr.clone()))
         .expect("Cannot start entity discovery client");
 
-    let mut event_sourced_client = rt.block_on(EventSourcedClient::connect("http://127.0.0.1:8088"))
+    let mut event_sourced_client = rt.block_on(EventSourcedClient::connect(addr))
         .expect("Cannot start event sourced client");
 
     //TODO implement more scenarios
-    rt.block_on(discovery_test(&mut entity_discovery_client)).expect("test failed");
-    rt.block_on(event_sourced_test(&mut event_sourced_client)).expect("test failed");
+    rt.block_on(discovery_test(&mut entity_discovery_client));
+    rt.block_on(event_sourced_test(&mut event_sourced_client));
 }
 
-async fn discovery_test(client: &mut EntityDiscoveryClient<Channel>) -> Result<(), Box<dyn std::error::Error>> {
-    // verify that the user function process responds
-
+async fn discovery_test(client: &mut EntityDiscoveryClient<Channel>) {
     let proxy_info = ProxyInfo {
         protocol_major_version: 0,
         protocol_minor_version: 1,
@@ -53,7 +56,7 @@ async fn discovery_test(client: &mut EntityDiscoveryClient<Channel>) -> Result<(
         supported_entity_types: vec!["cloudstate.eventsourced.EventSourced".to_owned()]
     };
 
-    let entity_spec = client.discover(proxy_info).await.expect("Expected response");
+    let entity_spec = client.discover(proxy_info).await.unwrap();
     let message = entity_spec.get_ref();
 
     assert!(!message.proto.is_empty());
@@ -61,12 +64,9 @@ async fn discovery_test(client: &mut EntityDiscoveryClient<Channel>) -> Result<(
     assert_eq!(entity.entity_type, "cloudstate.eventsourced.EventSourced");
     assert_eq!(entity.service_name, "com.example.shoppingcart.ShoppingCart");
     assert_eq!(entity.persistence_id, "shopping_cart");
-
-    Ok(())
 }
 
-async fn event_sourced_test(client: &mut EventSourcedClient<Channel>) -> Result<(), Box<dyn std::error::Error>> {
-
+async fn event_sourced_test(client: &mut EventSourcedClient<Channel>) {
     let item1 = LineItem {
         product_id: "soap33".to_string(),
         name: "soap".to_string(),
@@ -84,7 +84,7 @@ async fn event_sourced_test(client: &mut EventSourcedClient<Channel>) -> Result<
 
     use event_sourced_stream_in::Message;
 
-    let init_msg = EventSourcedInit{
+    let init_msg = EventSourcedInit {
         service_name: "com.example.shoppingcart.ShoppingCart".to_string(),
         entity_id: "shopcart_entity_id".to_string(),
         snapshot: Some(snapshot),
@@ -109,7 +109,8 @@ async fn event_sourced_test(client: &mut EventSourcedClient<Channel>) -> Result<
         Message::Init(init_msg),
         Message::Command(cmd_msg.clone())]
     );
-    let response = client.handle(requests).await?;
+
+    let response = client.handle(requests).await.unwrap();
 
     let mut inbound = response.into_inner();
 
@@ -128,9 +129,7 @@ async fn event_sourced_test(client: &mut EventSourcedClient<Channel>) -> Result<
         assert_eq!(item.quantity, add_line_item.quantity);
     }
 
-    assert_eq!(inbound.message().await?, None);
-
-    Ok(())
+    assert_eq!(inbound.message().await.unwrap(), None);
 }
 
 #[tonic::async_trait]

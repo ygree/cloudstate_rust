@@ -17,7 +17,7 @@ use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, HandleCo
 use cloudstate_server::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
 use std::collections::BTreeMap;
 
-pub async fn run(host_port: &str) -> Result<(), tonic::transport::Error> {
+pub async fn run(host_port: String) -> Result<(), tonic::transport::Error> {
     let addr = host_port.parse().unwrap();
 
     let mut registry = EntityRegistry(vec![]);
