@@ -21,7 +21,6 @@ use tonic::{
 };
 use tokio::runtime::Runtime;
 use shopcart_example::run;
-use std::net::SocketAddr;
 
 #[test]
 fn test() {
@@ -182,12 +181,11 @@ trait ProstMessageExt {
     fn to_any(&self, type_url: &str) -> Any;
 }
 
-impl<T> ProstMessageExt for T
-    where T: ::prost::Message {
+impl<T: prost::Message> ProstMessageExt for T {
 
     fn to_any(&self, type_url: &str) -> Any {
         let mut buf = vec![];
-        self.encode(&mut buf); //TODO returns Result
+        self.encode(&mut buf).expect("Failed to encode message to Any");
         ::prost_types::Any {
             type_url: type_url.to_owned(),
             value: buf,
