@@ -49,8 +49,6 @@ pub trait HandleCommandContext {
     type Event;
 
     fn emit_event(&mut self, event: Self::Event);
-
-    //TODO implement fail()
 }
 
 struct CommandHandlerContext<T> {
@@ -158,7 +156,6 @@ pub trait EventSourcedEntity {
         }
     }
 
-    //TODO consider changing the signature to return emitted events, error, or effects explicitly without using the context
     fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Response<Self::Response>, String>;
 
     fn event_received(&mut self, type_url: String, bytes: Bytes) {

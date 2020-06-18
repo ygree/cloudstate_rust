@@ -226,16 +226,18 @@ java.lang.IllegalStateException: Pool shutdown unexpectedly
 
 ### :DONE: rename `CommandDecoder` to something more descriptive
 
+### :DONE: does `protobuf` provides a better way to get package name?
+    Doesn't seem so. The only place it has the package name encoded is the file descriptor.
+
 ### --------------------------------------------------------------------------------------------------------------------
 
 ### :TODO: Add more scenarios into shopcart-example
 
-### :TODO: introduce a builder for service discovery 
+### :TODO: Add logging instead of printlns
 
-### :TODO: does `protobuf` provides a better way to get package name?
-    Doesn't seem so. The only place it has the package name encoded is the file descriptor.
+### :TODO: Fix cloudstate-core-derive tests
 
-### :TODO: command-macro-derive tests are fragile because they match exact compilation error and it depends on the `server-spike` module that makes it very fragile. The only need for the dependency is the CommandDecoder trait. Moving it to more stable crate should resolve this issue.
+### :TODO: Introduce a builder for service discovery 
         
 ### :TODO: Integrate into Cloudstate TCK        
 

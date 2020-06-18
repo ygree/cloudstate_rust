@@ -50,7 +50,6 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
 
     let variants: Vec<(_, _)> = match &ast.data {
         syn::Data::Enum(data_enum) => {
-            //TODO check that each variant contains only one unnamed field with a type that implements ::prost::Message trait
             data_enum.variants.iter().map(|v| {
                 let field_path = match v.fields {
                     Fields::Unnamed(FieldsUnnamed{ ref unnamed, .. }) => {
@@ -65,7 +64,7 @@ fn impl_command_macro(ast: &syn::DeriveInput) -> TokenStream {
                                     result
                                 },
                                 _ => {
-                                    panic!("2 Only single non-generic struct parameter is allowed for enum variant {}!", v.ident) //TODO properly handle it
+                                    panic!("Only single non-generic struct parameter is allowed for enum variant {}!", v.ident) //TODO properly handle it
                                 },
                             }
                             //==> type = Path(TypePath { qself: None, path: Path { leading_colon: None, segments: [PathSegment { ident: Ident { ident: "GetShoppingCart", span: #0 bytes(1423..1438) }, arguments: None }] } })
