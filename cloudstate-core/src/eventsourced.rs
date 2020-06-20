@@ -14,11 +14,15 @@ impl EntityRegistry {
         EntityRegistry(vec![])
     }
 
-    pub fn eventsourced_entity<T, F>(&mut self, service_name: &str, creator: F)
+    pub fn eventsourced_entity<T, F>(&mut self, entity_name: &str, creator: F)
         where T: EventSourcedEntityHandler + Send + Sync + 'static,
               F: Fn () -> T + Send + Sync + 'static
     {
-        let entity_name = service_name.to_owned();
+        if self.0.iter().find(|v| v.entity_name == entity_name).is_some() {
+            panic!("EntitySource entity {} already registered!", entity_name);
+        }
+
+        let entity_name = entity_name.to_owned();
         let create_entity_function = EntityHandlerFactory {
             entity_name,
             creator: Box::new(move || {
@@ -28,9 +32,9 @@ impl EntityRegistry {
         self.0.push(create_entity_function);
     }
 
-    pub fn create(&self, service_name: &str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> {
+    pub fn create(&self, entity_name: &str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> {
         for factory in &self.0 {
-            if factory.entity_name == service_name {
+            if factory.entity_name == entity_name {
                 let f = &factory.creator;
                 return Some(f())
             }
