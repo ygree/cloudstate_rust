@@ -13,7 +13,7 @@ use protocols::prost_example::{
 use prost::Message;
 use cloudstate_core::AnyMessage;
 use cloudstate_core_derive::AnyMessage;
-use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, HandleCommandContext, Response};
+use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, EventsourcedContext, Response};
 use cloudstate_server::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
 use std::collections::BTreeMap;
 
@@ -103,58 +103,11 @@ impl EventSourcedEntity for ShoppingCartEntity {
         }
     }
 
-    // fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Option<Self::Response>, String> {
-    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Response<Self::Response>, String> {
+    fn handle_command(&self, command: Self::Command, context: &mut impl EventsourcedContext<Event=Self::Event>) -> Result<Response<Self::Response>, String> {
         match command {
-            ShoppingCartCommand::AddLine(item) => {
-                println!("Handle command: {:?}", item);
-                if item.quantity <= 0 {
-                    return Err(format!("Cannot add negative quantity of to item {}", item.product_id))
-                }
-                context.emit_event(
-                    ShoppingCartEvent::ItemAdded(
-                        ItemAdded { //TODO maybe implement auto-conversion for: ItemAdded -> ShoppingCartEvent::ItemAdded
-                            item: Some(
-                                LineItem {
-                                    product_id: item.product_id,
-                                    name: item.name,
-                                    quantity: item.quantity,
-                                }
-                            )
-                        }
-                    )
-                );
-                Ok(Response::EmptyReply)
-            }
-            ShoppingCartCommand::RemoveLine(item) => {
-                println!("Handle command: {:?}", item);
-                if !self.0.contains_key(&item.product_id) {
-                    return Err(format!("Cannot remove item {} because it is not in the cart.", item.product_id))
-                }
-                context.emit_event(
-                    ShoppingCartEvent::ItemRemoved(
-                        ItemRemoved { //TODO maybe implement auto-conversion for: ItemAdded -> ShoppingCartEvent::ItemAdded
-                            product_id: item.product_id,
-                        }
-                    )
-                );
-                Ok(Response::EmptyReply)
-            }
-            ShoppingCartCommand::GetCart(cart) => {
-                println!("Handle command: {:?}", cart);
-                Ok(Response::Reply(
-                    ShoppingCartReply::Cart(
-                        shoppingcart::Cart {
-                            items: self.0.iter()
-                                .map(|(item_id, item_val)| shoppingcart::LineItem {
-                                    product_id: item_id.clone(),
-                                    name: item_val.name.clone(),
-                                    quantity: item_val.qty,
-                                }).collect()
-                        }
-                    )
-                ))
-            }
+            ShoppingCartCommand::AddLine(item) => self.add_line(context, item).map(|_| Response::EmptyReply),
+            ShoppingCartCommand::RemoveLine(item) => self.remove_line(context, item).map(|_| Response::EmptyReply),
+            ShoppingCartCommand::GetCart(cart) => Ok(Response::Reply(self.get_cart(cart))),
         }
     }
 
@@ -177,3 +130,56 @@ impl EventSourcedEntity for ShoppingCartEntity {
 
 }
 
+
+impl ShoppingCartEntity {
+
+    fn add_line(&self, context: &mut impl EventsourcedContext<Event=ShoppingCartEvent>, item: AddLineItem) -> Result<(), String> {
+        println!("Handle command: {:?}", item);
+        if item.quantity <= 0 {
+            return Err(format!("Cannot add negative quantity of to item {}", item.product_id))
+        }
+        context.emit_event(
+            ShoppingCartEvent::ItemAdded(
+                ItemAdded { //TODO maybe implement auto-conversion for: ItemAdded -> ShoppingCartEvent::ItemAdded
+                    item: Some(
+                        LineItem {
+                            product_id: item.product_id,
+                            name: item.name,
+                            quantity: item.quantity,
+                        }
+                    )
+                }
+            )
+        );
+        Ok(())
+    }
+
+    fn remove_line(&self, context: &mut impl EventsourcedContext<Event=ShoppingCartEvent>, item: RemoveLineItem) -> Result<(), String> {
+        println!("Handle command: {:?}", item);
+        if !self.0.contains_key(&item.product_id) {
+            return Err(format!("Cannot remove item {} because it is not in the cart.", item.product_id))
+        }
+        context.emit_event(
+            ShoppingCartEvent::ItemRemoved(
+                ItemRemoved { //TODO maybe implement auto-conversion for: ItemAdded -> ShoppingCartEvent::ItemAdded
+                    product_id: item.product_id,
+                }
+            )
+        );
+        Ok(())
+    }
+
+    fn get_cart(&self, cart: GetShoppingCart) -> ShoppingCartReply {
+        println!("Handle command: {:?}", cart);
+        ShoppingCartReply::Cart(
+            shoppingcart::Cart {
+                items: self.0.iter()
+                    .map(|(item_id, item_val)| shoppingcart::LineItem {
+                        product_id: item_id.clone(),
+                        name: item_val.name.clone(),
+                        quantity: item_val.qty,
+                    }).collect()
+            }
+        )
+    }
+}
