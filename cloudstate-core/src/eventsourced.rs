@@ -1,10 +1,69 @@
 use bytes::Bytes;
-use std::marker::PhantomData;
 use crate::AnyMessage;
 
 pub type MaybeEntityHandler = Option<Box<dyn EventSourcedEntityHandler + Send + Sync>>;
 
 type EntityHandlerFactory = Box<dyn Fn(&str) -> MaybeEntityHandler + Send + Sync>;
+
+pub struct Registry<F, H, R>
+    where
+        H: EventSourcedEntityHandler + Send + Sync + 'static,
+        F: Fn () -> H + Send + Sync + 'static
+{
+    name: String,
+    factory: F,
+    registry: Option<R>,
+}
+
+impl<F, H, R> Registry<F, H, R>
+    where
+        H: EventSourcedEntityHandler + Send + Sync + 'static,
+        F: Fn () -> H + Send + Sync + 'static {
+
+    fn new<F1, H1>(name: String, factory: F1) -> Registry<F1, H1, Self>
+        where H1: EventSourcedEntityHandler + Send + Sync + 'static,
+              F1: Fn () -> H1 + Send + Sync + 'static {
+        Registry {
+            name,
+            factory,
+            registry: None
+        }
+    }
+
+    fn add<F1, H1>(self, name: String, factory: F1) -> Registry<F1, H1, Self>
+        where H1: EventSourcedEntityHandler + Send + Sync + 'static,
+              F1: Fn () -> H1 + Send + Sync + 'static {
+
+        Registry {
+            name,
+            factory,
+            registry: Some(self)
+        }
+    }
+
+    pub fn create(&self, name: &str) -> MaybeEntityHandler
+    {
+        if self.name == name {
+            let f = &self.factory;
+            let r = f();
+            Some(Box::new(r))
+        } else {
+            None
+        }
+    }
+
+    pub fn create2(&self, name: &str) -> Option<impl EventSourcedEntityHandler>
+    {
+        if self.name == name {
+            let f = &self.factory;
+            let r = f();
+            Some(r)
+        } else {
+            None
+        }
+    }
+}
+
 
 //TODO try to implement an alternative fully typed registry to avoid allocations
 pub struct EntityRegistry(pub Vec<EntityHandlerFactory>);
