@@ -11,13 +11,7 @@ pub struct EntityRegistry(pub Vec<EntityHandlerFactory>);
 
 impl EntityRegistry {
 
-    pub fn add_entity_type<T>(&mut self, service_name: &str, _entity: PhantomData<T>)
-        where T: EventSourcedEntityHandler + Default + Send + Sync + 'static
-    {
-        self.add_entity(service_name, || <T as Default>::default());
-    }
-
-    pub fn add_entity<T, F>(&mut self, service_name: &str, creator: F)
+    pub fn eventsourced_entity<T, F>(&mut self, service_name: &str, creator: F)
         where T: EventSourcedEntityHandler + Send + Sync + 'static,
               F: Fn () -> T + Send + Sync + 'static
     {
@@ -45,17 +39,17 @@ impl EntityRegistry {
     }
 }
 
-pub trait HandleCommandContext {
+pub trait EventsourcedContext {
     type Event;
 
     fn emit_event(&mut self, event: Self::Event);
 }
 
-struct CommandHandlerContext<T> {
+struct EventsourcedContextData<T> {
     events: Vec<T>,
 }
 
-impl<T> HandleCommandContext for CommandHandlerContext<T> {
+impl<T> EventsourcedContext for EventsourcedContextData<T> {
     type Event = T;
 
     fn emit_event(&mut self, event: Self::Event) {
@@ -71,7 +65,7 @@ pub enum Response<T: AnyMessage> {
 }
 
 // this is typed entity handler interface to be implemented by user
-// NOTE: it can't be used by the server side as is because it has associated types.
+// NOTE: it can't be used by the server side as-is because it has associated types.
 //  Such traits can't be used as trait objects.
 pub trait EventSourcedEntity {
 
@@ -97,7 +91,7 @@ pub trait EventSourcedEntity {
         println!("Handing received command {}", &type_url);
         if let Some(cmd) = <Self::Command as AnyMessage>::decode(&type_url, bytes) {
 
-            let mut context = CommandHandlerContext {
+            let mut context = EventsourcedContextData {
                 events: vec![],
             };
 
@@ -156,7 +150,7 @@ pub trait EventSourcedEntity {
         }
     }
 
-    fn handle_command(&self, command: Self::Command, context: &mut impl HandleCommandContext<Event=Self::Event>) -> Result<Response<Self::Response>, String>;
+    fn handle_command(&self, command: Self::Command, context: &mut impl EventsourcedContext<Event=Self::Event>) -> Result<Response<Self::Response>, String>;
 
     fn event_received(&mut self, type_url: String, bytes: Bytes) {
         println!("Handing received event {}", &type_url);

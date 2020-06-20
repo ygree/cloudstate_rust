@@ -21,7 +21,7 @@ pub async fn run(host_port: String) -> Result<(), tonic::transport::Error> {
     let addr = host_port.parse().unwrap();
 
     let mut registry = EntityRegistry(vec![]);
-    registry.add_entity("com.example.shoppingcart.ShoppingCart", ShoppingCartEntity::default);
+    registry.eventsourced_entity("com.example.shoppingcart.ShoppingCart", ShoppingCartEntity::default);
     // registry.add_entity("shopcart2", ShoppingCartEntity::default);
     // registry.add_entity_type("shopcart3", PhantomData::<ShoppingCartEntity>);
 
