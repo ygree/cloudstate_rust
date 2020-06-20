@@ -1,36 +1,38 @@
 use bytes::Bytes;
 use crate::AnyMessage;
 
-pub type MaybeEntityHandler = Option<Box<dyn EventSourcedEntityHandler + Send + Sync>>;
+struct EntityHandlerFactory {
+    entity_name: String,
+    creator: Box<dyn Fn() -> Box<dyn EventSourcedEntityHandler + Send + Sync> + Send + Sync>,
+}
 
-type EntityHandlerFactory = Box<dyn Fn(&str) -> MaybeEntityHandler + Send + Sync>;
-
-pub struct EntityRegistry(pub Vec<EntityHandlerFactory>);
+pub struct EntityRegistry(Vec<EntityHandlerFactory>);
 
 impl EntityRegistry {
+
+    pub fn new() -> EntityRegistry {
+        EntityRegistry(vec![])
+    }
 
     pub fn eventsourced_entity<T, F>(&mut self, service_name: &str, creator: F)
         where T: EventSourcedEntityHandler + Send + Sync + 'static,
               F: Fn () -> T + Send + Sync + 'static
     {
-        let expected_service_name = service_name.to_owned();
-        let create_entity_function: EntityHandlerFactory =
-            Box::new(move |name| {
-                if name == expected_service_name {
-                    let f = &creator;
-                    Some(Box::new(f()))
-                } else {
-                    None
-                }
-            });
-
-        self.0.push(Box::new(create_entity_function));
+        let entity_name = service_name.to_owned();
+        let create_entity_function = EntityHandlerFactory {
+            entity_name,
+            creator: Box::new(move || {
+                Box::new(creator())
+            }),
+        };
+        self.0.push(create_entity_function);
     }
 
-    pub fn create(&self, service_name: &str) -> MaybeEntityHandler {
-        for creator in &self.0 {
-            if let Some(entity) = creator(service_name) {
-                return Some(entity);
+    pub fn create(&self, service_name: &str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> {
+        for factory in &self.0 {
+            if factory.entity_name == service_name {
+                let f = &factory.creator;
+                return Some(f())
             }
         }
         return None;
