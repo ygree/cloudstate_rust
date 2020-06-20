@@ -5,36 +5,54 @@ pub type MaybeEntityHandler = Option<Box<dyn EventSourcedEntityHandler + Send + 
 
 type EntityHandlerFactory = Box<dyn Fn(&str) -> MaybeEntityHandler + Send + Sync>;
 
-pub struct Registry<F, H, R>
+pub struct EntityRegistry2<F, H, R>
     where
         H: EventSourcedEntityHandler + Send + Sync + 'static,
-        F: Fn () -> H + Send + Sync + 'static
+        F: Fn () -> H + Send + Sync + 'static,
+        R: EventSourcedEntityHandlerFactory,
 {
     name: String,
     factory: F,
     registry: Option<R>,
 }
 
-impl<F, H, R> Registry<F, H, R>
+pub trait EventSourcedEntityHandlerFactory {
+    fn create(&self, name: &str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>>;
+}
+
+impl<F, H, R> EventSourcedEntityHandlerFactory for EntityRegistry2<F, H, R>
     where
         H: EventSourcedEntityHandler + Send + Sync + 'static,
-        F: Fn () -> H + Send + Sync + 'static {
+        F: Fn () -> H + Send + Sync + 'static,
+        R: EventSourcedEntityHandlerFactory,
+{
+    fn create(&self, name: &str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> {
+        self.create(name)
+    }
+}
 
-    fn new<F1, H1>(name: String, factory: F1) -> Registry<F1, H1, Self>
+impl<F, H, R> EntityRegistry2<F, H, R>
+    where
+        H: EventSourcedEntityHandler + Send + Sync + 'static,
+        F: Fn () -> H + Send + Sync + 'static,
+        R: EventSourcedEntityHandlerFactory,
+{
+
+    fn new<F1, H1>(name: String, factory: F1) -> EntityRegistry2<F1, H1, Self>
         where H1: EventSourcedEntityHandler + Send + Sync + 'static,
               F1: Fn () -> H1 + Send + Sync + 'static {
-        Registry {
+        EntityRegistry2 {
             name,
             factory,
             registry: None
         }
     }
 
-    fn add<F1, H1>(self, name: String, factory: F1) -> Registry<F1, H1, Self>
+    fn add<F1, H1>(self, name: String, factory: F1) -> EntityRegistry2<F1, H1, Self>
         where H1: EventSourcedEntityHandler + Send + Sync + 'static,
               F1: Fn () -> H1 + Send + Sync + 'static {
 
-        Registry {
+        EntityRegistry2 {
             name,
             factory,
             registry: Some(self)
@@ -48,24 +66,33 @@ impl<F, H, R> Registry<F, H, R>
             let r = f();
             Some(Box::new(r))
         } else {
-            None
+            match &self.registry {
+                Some(reg) => {
+                    reg.create(name)
+                },
+                None => None,
+            }
         }
     }
 
-    pub fn create2(&self, name: &str) -> Option<impl EventSourcedEntityHandler>
-    {
-        if self.name == name {
-            let f = &self.factory;
-            let r = f();
-            Some(r)
-        } else {
-            None
-        }
-    }
+    // pub fn create2(&self, name: &str) -> Option<impl EventSourcedEntityHandler>
+    // {
+    //     if self.name == name {
+    //         let f = &self.factory;
+    //         let r = f();
+    //         Some(r)
+    //     } else {
+    //         match &self.registry {
+    //             Some(reg) => {
+    //                 reg.create(name)
+    //             },
+    //             None => None,
+    //         }
+    //     }
+    // }
 }
 
 
-//TODO try to implement an alternative fully typed registry to avoid allocations
 pub struct EntityRegistry(pub Vec<EntityHandlerFactory>);
 
 impl EntityRegistry {
