@@ -1,12 +1,12 @@
 use bytes::Bytes;
 use crate::AnyMessage;
 
-struct EntityHandlerFactory {
-    entity_name: String,
-    creator: Box<dyn Fn() -> Box<dyn EventSourcedEntityHandler + Send + Sync> + Send + Sync>,
-}
-
 pub struct EntityRegistry(Vec<EntityHandlerFactory>);
+
+struct EntityHandlerFactory {
+    entity_name : String,
+    handler_factory: Box<dyn Fn() -> Box<dyn EventSourcedEntityHandler + Send + Sync> + Send + Sync>,
+}
 
 impl EntityRegistry {
 
@@ -14,9 +14,9 @@ impl EntityRegistry {
         EntityRegistry(vec![])
     }
 
-    pub fn eventsourced_entity<T, F>(&mut self, entity_name: &str, creator: F)
-        where T: EventSourcedEntityHandler + Send + Sync + 'static,
-              F: Fn () -> T + Send + Sync + 'static
+    pub fn eventsourced_entity<F, H>(&mut self, entity_name: &str, handler_factory: F)
+        where F: Fn () -> H + Send + Sync + 'static,
+              H: EventSourcedEntityHandler + Send + Sync + 'static
     {
         if self.0.iter().find(|v| v.entity_name == entity_name).is_some() {
             panic!("EntitySource entity {} already registered!", entity_name);
@@ -25,8 +25,8 @@ impl EntityRegistry {
         let entity_name = entity_name.to_owned();
         let create_entity_function = EntityHandlerFactory {
             entity_name,
-            creator: Box::new(move || {
-                Box::new(creator())
+            handler_factory: Box::new(move || {
+                Box::new(handler_factory())
             }),
         };
         self.0.push(create_entity_function);
@@ -35,7 +35,7 @@ impl EntityRegistry {
     pub fn create(&self, entity_name: &str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> {
         for factory in &self.0 {
             if factory.entity_name == entity_name {
-                let f = &factory.creator;
+                let f = &factory.handler_factory;
                 return Some(f())
             }
         }
@@ -43,20 +43,24 @@ impl EntityRegistry {
     }
 }
 
-pub trait EventsourcedContext {
+pub trait EventSourcedContext {
     type Event;
 
     fn emit_event(&mut self, event: Self::Event);
 }
 
-struct EventsourcedContextData<T> {
+struct EventSourcedContextData<T> {
     events: Vec<T>,
+    snapshot_every: i64,
 }
 
-impl<T> EventsourcedContext for EventsourcedContextData<T> {
+impl<T> EventSourcedContext for EventSourcedContextData<T> {
     type Event = T;
 
     fn emit_event(&mut self, event: Self::Event) {
+        //TODO serialize event
+        //TODO deserialize event
+        //TODO handle event
         self.events.push(event);
     }
 }
@@ -79,39 +83,56 @@ pub trait EventSourcedEntity {
     type Snapshot : AnyMessage;
     type Response : AnyMessage;
 
-    fn restore(&mut self, snapshot: Self::Snapshot);
+    fn snapshot_every(&self) -> i64 {
+        100 //TODO get default from config
+    }
 
     // This method is called by server and need to bind to the entity typed and delegate call to the user implementation
     fn snapshot_received(&mut self, type_url: String, bytes: Bytes) {
         if let Some(snapshot) = <Self::Snapshot as AnyMessage>::decode(&type_url, bytes) {
             println!("Received snapshot!");
-            self.restore(snapshot);
+            self.handle_snapshot(snapshot);
         } else {
             eprintln!("Couldn't decode snapshot!");
         }
     }
 
+    fn handle_snapshot(&mut self, snapshot: Self::Snapshot);
+
     fn command_received(&mut self, type_url: String, bytes: Bytes) -> EntityResponse {
         println!("Handing received command {}", &type_url);
         if let Some(cmd) = <Self::Command as AnyMessage>::decode(&type_url, bytes) {
 
-            let mut context = EventsourcedContextData {
+            let mut context = EventSourcedContextData {
                 events: vec![],
+                snapshot_every: self.snapshot_every(),
+                //TODO pass event_handler to be called immediately on emit_event
             };
+
+            // self.event_received()
 
             let result = self.handle_command(cmd, &mut context);
 
-            let events = context.events.iter().flat_map(|e| {
-                match <Self::Event as AnyMessage>::encode(&e) {
-                    Some((type_id, bytes)) => Some((type_id, Bytes::from(bytes))),
-                    _ => None,
-                }
-            }).collect();
+            let events = match result {
+                Ok(_) => {
+                    let serialized_events = context.events.iter().flat_map(|e| {
+                        match <Self::Event as AnyMessage>::encode(&e) {
+                            Some((type_id, bytes)) => Some((type_id, Bytes::from(bytes))),
+                            _ => None,
+                        }
+                    }).collect();
 
-            // apply events
-            for evt in context.events {
-                self.handle_event(evt);
-            }
+                    //TODO: according to Java impl, events are serialized/deserialized and applied immediately after being emitted
+                    for evt in context.events {
+                        self.handle_event(evt);
+                    }
+                    serialized_events
+                },
+                Err(_) => {
+                    vec![]
+                },
+            };
+
             //TODO return an effect to be sent to Akka
 
             let action: EntityAction = match result {
@@ -154,7 +175,7 @@ pub trait EventSourcedEntity {
         }
     }
 
-    fn handle_command(&self, command: Self::Command, context: &mut impl EventsourcedContext<Event=Self::Event>) -> Result<Response<Self::Response>, String>;
+    fn handle_command(&self, command: Self::Command, context: &mut impl EventSourcedContext<Event=Self::Event>) -> Result<Response<Self::Response>, String>;
 
     fn event_received(&mut self, type_url: String, bytes: Bytes) {
         println!("Handing received event {}", &type_url);

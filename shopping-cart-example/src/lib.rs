@@ -13,7 +13,7 @@ use protocols::prost_example::{
 use prost::Message;
 use cloudstate_core::AnyMessage;
 use cloudstate_core_derive::AnyMessage;
-use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, EventsourcedContext, Response};
+use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, EventSourcedContext, Response};
 use cloudstate_server::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
 use std::collections::BTreeMap;
 
@@ -91,7 +91,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
     type Snapshot = ShoppingCartSnapshot;
     type Event = ShoppingCartEvent;
 
-    fn restore(&mut self, snapshot: Self::Snapshot) {
+    fn handle_snapshot(&mut self, snapshot: Self::Snapshot) {
         let ShoppingCartSnapshot::Snapshot(cart) = snapshot;
 
         println!("Loading snapshot: {:?}", &cart);
@@ -103,7 +103,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
         }
     }
 
-    fn handle_command(&self, command: Self::Command, context: &mut impl EventsourcedContext<Event=Self::Event>) -> Result<Response<Self::Response>, String> {
+    fn handle_command(&self, command: Self::Command, context: &mut impl EventSourcedContext<Event=Self::Event>) -> Result<Response<Self::Response>, String> {
         match command {
             ShoppingCartCommand::AddLine(item) => self.add_line(context, item).map(|_| Response::EmptyReply),
             ShoppingCartCommand::RemoveLine(item) => self.remove_line(context, item).map(|_| Response::EmptyReply),
@@ -133,7 +133,7 @@ impl EventSourcedEntity for ShoppingCartEntity {
 
 impl ShoppingCartEntity {
 
-    fn add_line(&self, context: &mut impl EventsourcedContext<Event=ShoppingCartEvent>, item: AddLineItem) -> Result<(), String> {
+    fn add_line(&self, context: &mut impl EventSourcedContext<Event=ShoppingCartEvent>, item: AddLineItem) -> Result<(), String> {
         println!("Handle command: {:?}", item);
         if item.quantity <= 0 {
             return Err(format!("Cannot add negative quantity of to item {}", item.product_id))
@@ -154,7 +154,7 @@ impl ShoppingCartEntity {
         Ok(())
     }
 
-    fn remove_line(&self, context: &mut impl EventsourcedContext<Event=ShoppingCartEvent>, item: RemoveLineItem) -> Result<(), String> {
+    fn remove_line(&self, context: &mut impl EventSourcedContext<Event=ShoppingCartEvent>, item: RemoveLineItem) -> Result<(), String> {
         println!("Handle command: {:?}", item);
         if !self.0.contains_key(&item.product_id) {
             return Err(format!("Cannot remove item {} because it is not in the cart.", item.product_id))

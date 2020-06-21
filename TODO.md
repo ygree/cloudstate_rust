@@ -1,6 +1,13 @@
 TODO
 ====
 
+# Apply event as soon as it's emitted
+serialize/deserialize and apply event on emit
+
+# Return snapshot
+use snapshot_every setting
+return snapshot
+    
 # Add more scenarios into shopcart-example
 
 # Add logging instead of printlns

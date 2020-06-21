@@ -107,7 +107,10 @@ impl EventSourced for EventSourcedServerImpl {
 
 enum EventSourcedSession {
     New(Arc<EntityRegistry>),
-    Initialized(Box<dyn EventSourcedEntityHandler + Send + Sync>),
+    Initialized {
+        entity_handler: Box<dyn EventSourcedEntityHandler + Send + Sync>,
+        snapshot_sequence: i64,
+    },
 }
 
 impl EventSourcedSession {
@@ -136,26 +139,32 @@ impl EventSourcedSession {
                     EventSourcedSession::New(entity_registry) => {
                         let service_name = init.service_name;
                         match entity_registry.create(&service_name) {
-                            Some(mut entity) => {
+                            Some(mut entity_handler) => {
+                                let snapshot_sequence: i64;
                                 if let Some(snapshot) = init.snapshot {
-                                    println!("snapshot: seq_id = {}", snapshot.snapshot_sequence);
+                                    snapshot_sequence = snapshot.snapshot_sequence;
+                                    println!("snapshot: seq_id = {}", snapshot_sequence);
 
                                     if let Some(snapshot_any) = snapshot.snapshot {
                                         let type_url = snapshot_any.type_url;
                                         let bytes = Bytes::from(snapshot_any.value);
-                                        entity.snapshot_received(type_url, bytes);
+                                        entity_handler.snapshot_received(type_url, bytes);
                                     }
                                 } else {
+                                    snapshot_sequence = 0;
                                     println!("No initial snapshot provided!");
                                 }
-                                *self = EventSourcedSession::Initialized(entity);
+                                *self = EventSourcedSession::Initialized {
+                                    entity_handler,
+                                    snapshot_sequence,
+                                };
                             },
                             None => {
                                 println!("Unknown service_name {}", service_name);
                             },
                         }
                     }
-                    EventSourcedSession::Initialized(_entity) => {
+                    EventSourcedSession::Initialized { .. } => {
                         println!("Entity already initialized!");
                     },
                 };
@@ -163,12 +172,12 @@ impl EventSourcedSession {
             },
             Message::Event(evt) => {
                 match self {
-                    EventSourcedSession::Initialized(entity) => {
+                    EventSourcedSession::Initialized { entity_handler, .. } => {
                         if let Some(event_any) = evt.payload {
                             let type_url = event_any.type_url;
                             println!("Handling event: {}", &type_url);
                             let bytes = Bytes::from(event_any.value);
-                            entity.event_received(type_url, bytes);
+                            entity_handler.event_received(type_url, bytes);
                         }
                     },
                     _ => {
@@ -179,13 +188,13 @@ impl EventSourcedSession {
             },
             Message::Command(cmd) => {
                 match self {
-                    EventSourcedSession::Initialized(entity) => {
+                    EventSourcedSession::Initialized { entity_handler, .. } => {
                         match cmd.payload {
                             Some(payload_any) => {
                                 let type_url = payload_any.type_url;
                                 println!("Handling command: {}", type_url);
                                 let bytes = Bytes::from(payload_any.value);
-                                let entity_resp: EntityResponse = entity.command_received(type_url, bytes);
+                                let entity_resp: EntityResponse = entity_handler.command_received(type_url, bytes);
 
                                 let client_action = match entity_resp.action {
                                     EntityAction::Reply { type_url, bytes } => {
