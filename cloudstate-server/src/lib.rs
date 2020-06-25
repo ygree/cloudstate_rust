@@ -178,7 +178,7 @@ impl EventSourcedSession {
                             println!("Handling event: {}", &type_url);
                             let bytes = Bytes::from(event_any.value);
                             //TODO maybe verify evt.sequence to make sure no events where skipped?
-                            entity_handler.event_received(type_url, bytes);
+                            entity_handler.event_received(&type_url, bytes);
                         }
                     },
                     _ => {

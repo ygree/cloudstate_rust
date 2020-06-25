@@ -55,13 +55,9 @@ struct CommandContextData<T> {
 impl<T: AnyMessage> CommandContext<T> for CommandContextData<T> {
 
     fn emit_event(&mut self, event: T) {
-        //TODO serialize event
-        match <T as AnyMessage>::encode(&event) {
-            Some(_) => {},
-            None => {},
-        }
-        //TODO deserialize event
-        //TODO handle event
+        //TODO how to call an event handler from here?
+        // it might be useful if we would like to apply events
+        // as soon as they are emitted
         self.events.push(event);
     }
 }
@@ -114,25 +110,23 @@ pub trait EventSourcedEntity {
 
             let result = self.handle_command(cmd, &mut context);
 
-            let events = match result {
+            let events: Vec<(String, Bytes)> = match result {
                 Ok(_) => {
-                    let serialized_events = context.events.iter().flat_map(|e| {
+                    context.events.iter().flat_map(|e| {
                         match <Self::Event as AnyMessage>::encode(&e) {
                             Some((type_id, bytes)) => Some((type_id, Bytes::from(bytes))),
                             _ => None,
                         }
-                    }).collect();
-
-                    //TODO: according to Java impl, events are serialized/deserialized and applied immediately after being emitted
-                    for evt in context.events {
-                        self.handle_event(evt);
-                    }
-                    serialized_events
+                    }).collect()
                 },
                 Err(_) => {
                     vec![]
                 },
             };
+
+            for (type_url, bytes) in events.iter() {
+                self.event_received(&type_url, bytes.clone());
+            }
 
             //TODO return an effect to be sent to Akka
 
@@ -178,10 +172,10 @@ pub trait EventSourcedEntity {
 
     fn handle_command(&self, command: Self::Command, context: &mut impl CommandContext<Self::Event>) -> Result<Response<Self::Response>, String>;
 
-    fn event_received(&mut self, type_url: String, bytes: Bytes) {
-        println!("Handling received event {}", &type_url);
+    fn event_received(&mut self, type_url: &str, bytes: Bytes) {
+        println!("Handling received event {}", type_url);
 
-        if let Some(evt) = <Self::Event as AnyMessage>::decode(&type_url, bytes) {
+        if let Some(evt) = <Self::Event as AnyMessage>::decode(type_url, bytes) {
             self.handle_event(evt);
         }
         //TODO what to do if can't deserialize event?
@@ -215,7 +209,7 @@ pub struct EntityResponse {
 pub trait EventSourcedEntityHandler {
     fn snapshot_received(&mut self, type_url: String, bytes: Bytes);
     fn command_received(&mut self, type_url: String, bytes: Bytes) -> EntityResponse;
-    fn event_received(&mut self, type_url: String, bytes: Bytes);
+    fn event_received(&mut self, type_url: &str, bytes: Bytes);
 }
 
 // This provides automatic implementation of EventSourcedEntityHandler for the server from the user's EventSourcedEntity implementation
@@ -235,7 +229,7 @@ impl<T> EventSourcedEntityHandler for T
     }
 
     #[inline]
-    fn event_received(&mut self, type_url: String, bytes: Bytes) {
+    fn event_received(&mut self, type_url: &str, bytes: Bytes) {
         // can't decode event here because a real type is needed that is an associated type
         // but associated types don't work with trait objects
         self.event_received(type_url, bytes)
