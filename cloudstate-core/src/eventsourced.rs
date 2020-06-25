@@ -85,7 +85,7 @@ pub trait EventSourcedEntity {
     }
 
     // This method is called by server and need to bind to the entity typed and delegate call to the user implementation
-    fn snapshot_received(&mut self, type_url: String, bytes: Bytes) {
+    fn snapshot_received(&mut self, type_url: &str, bytes: Bytes) {
         if let Some(snapshot) = <Self::Snapshot as AnyMessage>::decode(&type_url, bytes) {
             println!("Received snapshot!");
             self.handle_snapshot(snapshot);
@@ -96,7 +96,7 @@ pub trait EventSourcedEntity {
 
     fn handle_snapshot(&mut self, snapshot: Self::Snapshot);
 
-    fn command_received(&mut self, type_url: String, bytes: Bytes) -> EntityResponse {
+    fn command_received(&mut self, type_url: &str, bytes: Bytes) -> EntityResponse {
         println!("Handing received command {}", &type_url);
         if let Some(cmd) = <Self::Command as AnyMessage>::decode(&type_url, bytes) {
 
@@ -207,8 +207,8 @@ pub struct EntityResponse {
 
 // this is untyped entity handler interface for the server implementation
 pub trait EventSourcedEntityHandler {
-    fn snapshot_received(&mut self, type_url: String, bytes: Bytes);
-    fn command_received(&mut self, type_url: String, bytes: Bytes) -> EntityResponse;
+    fn snapshot_received(&mut self, type_url: &str, bytes: Bytes);
+    fn command_received(&mut self, type_url: &str, bytes: Bytes) -> EntityResponse;
     fn event_received(&mut self, type_url: &str, bytes: Bytes);
 }
 
@@ -217,12 +217,12 @@ impl<T> EventSourcedEntityHandler for T
     where T: EventSourcedEntity {
 
     #[inline]
-    fn snapshot_received(&mut self, type_url: String, bytes: Bytes) {
+    fn snapshot_received(&mut self, type_url: &str, bytes: Bytes) {
         self.snapshot_received(type_url, bytes)
     }
 
     #[inline]
-    fn command_received(&mut self, type_url: String, bytes: Bytes) -> EntityResponse {
+    fn command_received(&mut self, type_url: &str, bytes: Bytes) -> EntityResponse {
         // can't decode command here because a real type is needed that is an associated type
         // but associated types don't work with trait objects
         self.command_received(type_url, bytes)

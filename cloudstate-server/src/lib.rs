@@ -148,7 +148,7 @@ impl EventSourcedSession {
                                     if let Some(snapshot_any) = snapshot.snapshot {
                                         let type_url = snapshot_any.type_url;
                                         let bytes = Bytes::from(snapshot_any.value);
-                                        entity_handler.snapshot_received(type_url, bytes);
+                                        entity_handler.snapshot_received(&type_url, bytes);
                                     }
                                 } else {
                                     snapshot_sequence = 0;
@@ -195,7 +195,7 @@ impl EventSourcedSession {
                                 let type_url = payload_any.type_url;
                                 println!("Handling command: {}", type_url);
                                 let bytes = Bytes::from(payload_any.value);
-                                let entity_resp: EntityResponse = entity_handler.command_received(type_url, bytes);
+                                let entity_resp: EntityResponse = entity_handler.command_received(&type_url, bytes);
 
                                 let client_action = match entity_resp.action {
                                     EntityAction::Reply { type_url, bytes } => {
