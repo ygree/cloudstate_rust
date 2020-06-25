@@ -43,22 +43,23 @@ impl EntityRegistry {
     }
 }
 
-pub trait EventSourcedContext {
-    type Event;
-
-    fn emit_event(&mut self, event: Self::Event);
+pub trait CommandContext<T: AnyMessage> {
+    fn emit_event(&mut self, event: T);
 }
 
-struct EventSourcedContextData<T> {
+struct CommandContextData<T> {
     events: Vec<T>,
     snapshot_every: i64,
 }
 
-impl<T> EventSourcedContext for EventSourcedContextData<T> {
-    type Event = T;
+impl<T: AnyMessage> CommandContext<T> for CommandContextData<T> {
 
-    fn emit_event(&mut self, event: Self::Event) {
+    fn emit_event(&mut self, event: T) {
         //TODO serialize event
+        match <T as AnyMessage>::encode(&event) {
+            Some(_) => {},
+            None => {},
+        }
         //TODO deserialize event
         //TODO handle event
         self.events.push(event);
@@ -103,7 +104,7 @@ pub trait EventSourcedEntity {
         println!("Handing received command {}", &type_url);
         if let Some(cmd) = <Self::Command as AnyMessage>::decode(&type_url, bytes) {
 
-            let mut context = EventSourcedContextData {
+            let mut context = CommandContextData::<Self::Event> {
                 events: vec![],
                 snapshot_every: self.snapshot_every(),
                 //TODO pass event_handler to be called immediately on emit_event
@@ -175,14 +176,15 @@ pub trait EventSourcedEntity {
         }
     }
 
-    fn handle_command(&self, command: Self::Command, context: &mut impl EventSourcedContext<Event=Self::Event>) -> Result<Response<Self::Response>, String>;
+    fn handle_command(&self, command: Self::Command, context: &mut impl CommandContext<Self::Event>) -> Result<Response<Self::Response>, String>;
 
     fn event_received(&mut self, type_url: String, bytes: Bytes) {
-        println!("Handing received event {}", &type_url);
+        println!("Handling received event {}", &type_url);
 
         if let Some(evt) = <Self::Event as AnyMessage>::decode(&type_url, bytes) {
             self.handle_event(evt);
         }
+        //TODO what to do if can't deserialize event?
     }
 
     fn handle_event(&mut self, event: Self::Event);
