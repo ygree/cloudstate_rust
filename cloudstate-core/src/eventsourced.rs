@@ -57,7 +57,7 @@ pub trait CommandContext<T: AnyMessage> {
 
 struct CommandContextData<T> {
     events: Vec<T>,
-    snapshot_every: i64,
+    snapshot_every: Option<u32>,
 }
 
 impl<T: AnyMessage> CommandContext<T> for CommandContextData<T> {
@@ -88,8 +88,8 @@ pub trait EventSourcedEntity {
     type Snapshot : AnyMessage;
     type Response : AnyMessage;
 
-    fn snapshot_every(&self) -> i64 {
-        100 //TODO get default from config
+    fn snapshot_every(&self) -> Option<u32> {
+        None
     }
 
     // This method is called by server and need to bind to the entity typed and delegate call to the user implementation

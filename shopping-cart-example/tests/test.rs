@@ -20,7 +20,7 @@ use tonic::{
     Streaming, transport::Channel,
 };
 use tokio::runtime::Runtime;
-use shopcart_example::run;
+use shopcart_example::run_server;
 
 #[test]
 fn test() {
@@ -33,7 +33,7 @@ fn test() {
     // Running the server for tests within the same process to make sure it's stopped
     // when a test assertion fails
     let bind_addr = format!("0.0.0.0:{}", port);
-    rt.spawn(run(bind_addr));
+    rt.spawn(run_server(bind_addr));
 
     let mut entity_discovery_client = rt.block_on(EntityDiscoveryClient::connect(addr.clone()))
         .expect("Cannot start entity discovery client");

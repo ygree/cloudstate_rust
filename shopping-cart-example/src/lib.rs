@@ -17,11 +17,12 @@ use cloudstate_core::eventsourced::{EntityRegistry, EventSourcedEntity, CommandC
 use cloudstate_server::{EventSourcedServerImpl, EntityDiscoveryServerImpl};
 use std::collections::BTreeMap;
 
-pub async fn run(host_port: String) -> Result<(), tonic::transport::Error> {
+pub async fn run_server(host_port: String) -> Result<(), tonic::transport::Error> {
     let addr = host_port.parse().unwrap();
 
     let mut registry = EntityRegistry::new();
     registry.register_event_sourced_entity("com.example.shoppingcart.ShoppingCart", "shopping-cart", ShoppingCartEntity::default);
+    registry.register_event_sourced_entity("test-snapshot-every-time", "shopping-cart", || ShoppingCartEntity::new(1));
     // registry.add_entity("shopcart2", ShoppingCartEntity::default);
     // registry.add_entity_type("shopcart3", PhantomData::<ShoppingCartEntity>);
 
@@ -83,7 +84,20 @@ struct ItemValue {
 type ItemId = String;
 
 #[derive(Default)]
-pub struct ShoppingCartEntity(BTreeMap<ItemId, ItemValue>);
+pub struct ShoppingCartEntity {
+    items: BTreeMap<ItemId, ItemValue>,
+    snapshot_every: Option<u32>,
+}
+
+impl ShoppingCartEntity {
+
+    fn new(snapshot_every: u32) -> ShoppingCartEntity {
+        ShoppingCartEntity {
+            items: BTreeMap::new(),
+            snapshot_every: Some(snapshot_every),
+        }
+    }
+}
 
 impl EventSourcedEntity for ShoppingCartEntity {
 
@@ -93,8 +107,8 @@ impl EventSourcedEntity for ShoppingCartEntity {
     type Snapshot = ShoppingCartSnapshot;
     type Event = ShoppingCartEvent;
 
-    fn snapshot_every(&self) -> i64 {
-        10
+    fn snapshot_every(&self) -> Option<u32> {
+        self.snapshot_every
     }
 
     fn handle_snapshot(&mut self, snapshot: Self::Snapshot) {
@@ -102,10 +116,10 @@ impl EventSourcedEntity for ShoppingCartEntity {
 
         println!("Loading snapshot: {:?}", &cart);
 
-        self.0.clear();
+        self.items.clear();
 
         for LineItem { product_id, name,  quantity } in cart.items {
-            self.0.insert(product_id, ItemValue { name, qty: quantity });
+            self.items.insert(product_id, ItemValue { name, qty: quantity });
         }
     }
 
@@ -122,14 +136,14 @@ impl EventSourcedEntity for ShoppingCartEntity {
             ShoppingCartEvent::ItemAdded(item_added) => {
                 println!("Handle event: {:?}", item_added);
                 if let Some(LineItem { product_id, name, quantity }) = item_added.item {
-                    let mut item_val = self.0.entry(product_id)
+                    let mut item_val = self.items.entry(product_id)
                         .or_insert(ItemValue { name, qty: 0 });
                     item_val.qty += quantity;
                 }
             },
             ShoppingCartEvent::ItemRemoved(item_removed) => {
                 println!("Handle event: {:?}", item_removed);
-                self.0.remove(&item_removed.product_id);
+                self.items.remove(&item_removed.product_id);
             },
         }
     }
@@ -162,7 +176,7 @@ impl ShoppingCartEntity {
 
     fn remove_line(&self, context: &mut impl CommandContext<ShoppingCartEvent>, item: RemoveLineItem) -> Result<(), String> {
         println!("Handle command: {:?}", item);
-        if !self.0.contains_key(&item.product_id) {
+        if !self.items.contains_key(&item.product_id) {
             return Err(format!("Cannot remove item {} because it is not in the cart.", item.product_id))
         }
         context.emit_event(
@@ -179,7 +193,7 @@ impl ShoppingCartEntity {
         println!("Handle command: {:?}", cart);
         ShoppingCartReply::Cart(
             shoppingcart::Cart {
-                items: self.0.iter()
+                items: self.items.iter()
                     .map(|(item_id, item_val)| shoppingcart::LineItem {
                         product_id: item_id.clone(),
                         name: item_val.name.clone(),
