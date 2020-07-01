@@ -62,7 +62,7 @@ async fn discovery_test(client: &mut EntityDiscoveryClient<Channel>) {
     let entity = message.entities.first().expect("Expected one entity");
     assert_eq!(entity.entity_type, "cloudstate.eventsourced.EventSourced");
     assert_eq!(entity.service_name, "com.example.shoppingcart.ShoppingCart");
-    assert_eq!(entity.persistence_id, "shopping_cart");
+    assert_eq!(entity.persistence_id, "shopping-cart");
 }
 
 async fn event_sourced_test(client: &mut EventSourcedClient<Channel>) {

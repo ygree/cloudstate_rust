@@ -21,7 +21,7 @@ pub async fn run(host_port: String) -> Result<(), tonic::transport::Error> {
     let addr = host_port.parse().unwrap();
 
     let mut registry = EntityRegistry::new();
-    registry.eventsourced_entity("com.example.shoppingcart.ShoppingCart", "shopping_cart", ShoppingCartEntity::default);
+    registry.register_persistent_entity("com.example.shoppingcart.ShoppingCart", "shopping-cart", ShoppingCartEntity::default);
     // registry.add_entity("shopcart2", ShoppingCartEntity::default);
     // registry.add_entity_type("shopcart3", PhantomData::<ShoppingCartEntity>);
 
@@ -92,6 +92,10 @@ impl EventSourcedEntity for ShoppingCartEntity {
 
     type Snapshot = ShoppingCartSnapshot;
     type Event = ShoppingCartEvent;
+
+    fn snapshot_every(&self) -> i64 {
+        10
+    }
 
     fn handle_snapshot(&mut self, snapshot: Self::Snapshot) {
         let ShoppingCartSnapshot::Snapshot(cart) = snapshot;
