@@ -2,10 +2,10 @@ use bytes::Bytes;
 use crate::AnyMessage;
 
 pub struct EntityRegistry {
-    pub persistent_entities: Vec<PersistentEntityDescriptor>,
+    pub event_sourced_entities: Vec<EventSourcedEntityDescriptor>,
 }
 
-pub struct PersistentEntityDescriptor {
+pub struct EventSourcedEntityDescriptor {
     pub service_name: String,
     pub persistence_id : String,
     handler_factory: Box<dyn Fn() -> Box<dyn EventSourcedEntityHandler + Send + Sync> + Send + Sync>,
@@ -15,33 +15,33 @@ impl EntityRegistry {
 
     pub fn new() -> EntityRegistry {
         EntityRegistry {
-            persistent_entities: vec![],
+            event_sourced_entities: vec![],
         }
     }
 
-    pub fn register_persistent_entity<F, H>(&mut self, service_name: &str, persistence_id: &str, handler_factory: F)
+    pub fn register_event_sourced_entity<F, H>(&mut self, service_name: &str, persistence_id: &str, handler_factory: F)
         where F: Fn () -> H + Send + Sync + 'static,
               H: EventSourcedEntityHandler + Send + Sync + 'static
     {
-        if self.persistent_entities.iter().find(|v| v.service_name == service_name).is_some() {
-            panic!("Persistent entity {} already registered!", service_name);
+        if self.event_sourced_entities.iter().find(|v| v.service_name == service_name).is_some() {
+            panic!("Event sourced entity {} already registered!", service_name);
         }
 
         let entity_name = service_name.to_owned();
         let persistence_id = persistence_id.to_owned();
 
-        let create_entity_function = PersistentEntityDescriptor {
+        let create_entity_function = EventSourcedEntityDescriptor {
             service_name: entity_name,
             persistence_id,
             handler_factory: Box::new(move || {
                 Box::new(handler_factory())
             }),
         };
-        self.persistent_entities.push(create_entity_function);
+        self.event_sourced_entities.push(create_entity_function);
     }
 
     pub fn create(&self, entity_name: &str) -> Option<Box<dyn EventSourcedEntityHandler + Send + Sync>> {
-        for factory in &self.persistent_entities {
+        for factory in &self.event_sourced_entities {
             if factory.service_name == entity_name {
                 let f = &factory.handler_factory;
                 return Some(f())

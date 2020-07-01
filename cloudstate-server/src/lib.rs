@@ -30,7 +30,7 @@ impl EntityDiscovery for EntityDiscoveryServerImpl {
         //TODO check that request.into_inner().supported_entity_types contains entity_type
         // if not log an error
 
-        let entities = self.entity_registry.persistent_entities.iter().map(|v| {
+        let entities = self.entity_registry.event_sourced_entities.iter().map(|v| {
             Entity {
                 entity_type: "cloudstate.eventsourced.EventSourced".to_owned(),
                 service_name: v.service_name.clone(),
