@@ -104,9 +104,11 @@ async fn event_sourced_test(client: &mut EventSourcedClient<Channel>) {
         streamed: false,
     };
 
-    let requests = msgs_to_stream_in(vec![
-        Message::Init(init_msg),
-        Message::Command(cmd_msg.clone())]
+    let requests = msgs_to_stream_in(
+        vec![
+            Message::Init(init_msg),
+            Message::Command(cmd_msg.clone()),
+        ]
     );
 
     let response = client.handle(requests).await.unwrap();

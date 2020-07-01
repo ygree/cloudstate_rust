@@ -15,6 +15,7 @@ use cloudstate_core::eventsourced::{EntityAction, EntityRegistry, EventSourcedEn
 
 pub struct EntityDiscoveryServerImpl {
     pub descriptor_set: Vec<u8>,
+    pub entity_registry: Arc<EntityRegistry>,
 }
 
 #[tonic::async_trait]
@@ -29,15 +30,17 @@ impl EntityDiscovery for EntityDiscoveryServerImpl {
         //TODO check that request.into_inner().supported_entity_types contains entity_type
         // if not log an error
 
+        let entities = self.entity_registry.entities.iter().map(|v| {
+            Entity {
+                entity_type: "cloudstate.eventsourced.EventSourced".to_owned(),
+                service_name: v.entity_name.clone(),
+                persistence_id: v.persistence_id.clone(),
+            }
+        }).collect();
+
         let reply = EntitySpec {
             proto: self.descriptor_set.clone(),
-            entities: vec![
-                Entity {
-                    entity_type: "cloudstate.eventsourced.EventSourced".to_owned(),
-                    service_name: "com.example.shoppingcart.ShoppingCart".to_owned(), //TODO ???
-                    persistence_id: "shopping_cart".to_owned(),
-                }
-            ],
+            entities,
             service_info: Some(
                 ServiceInfo {
                     service_name: "shopping-cart".to_owned(), //TODO should be provided from the service builder / descriptor

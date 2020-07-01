@@ -21,14 +21,16 @@ pub async fn run(host_port: String) -> Result<(), tonic::transport::Error> {
     let addr = host_port.parse().unwrap();
 
     let mut registry = EntityRegistry::new();
-    registry.eventsourced_entity("com.example.shoppingcart.ShoppingCart", ShoppingCartEntity::default);
+    registry.eventsourced_entity("com.example.shoppingcart.ShoppingCart", "shopping_cart", ShoppingCartEntity::default);
     // registry.add_entity("shopcart2", ShoppingCartEntity::default);
     // registry.add_entity_type("shopcart3", PhantomData::<ShoppingCartEntity>);
 
-    let server = EventSourcedServerImpl(Arc::new(registry));
+    let entity_registry = Arc::new(registry);
+    let server = EventSourcedServerImpl(entity_registry.clone());
 
     let discovery_server = EntityDiscoveryServerImpl {
         descriptor_set: protocols::example::shopping_cart_descriptor_set().to_vec(),
+        entity_registry,
     };
     let discovery = EntityDiscoveryServer::new(discovery_server);
     let eventsourced = EventSourcedServer::new(server);
