@@ -6,7 +6,7 @@ use protocols::protocol::cloudstate::{
     eventsourced::{
         EventSourcedInit, EventSourcedStreamIn, EventSourcedStreamOut, EventSourcedSnapshot,
         event_sourced_client::EventSourcedClient,
-        event_sourced_stream_in,
+        event_sourced_stream_in::{Message},
         event_sourced_stream_out,
         EventSourcedReply
     },
@@ -44,6 +44,7 @@ fn test() {
     //TODO implement more scenarios
     rt.block_on(discovery_test(&mut entity_discovery_client));
     rt.block_on(event_sourced_test(&mut event_sourced_client));
+    rt.block_on(event_sourced_snapshot_every_time_test(&mut event_sourced_client));
 }
 
 async fn discovery_test(client: &mut EntityDiscoveryClient<Channel>) {
@@ -66,48 +67,14 @@ async fn discovery_test(client: &mut EntityDiscoveryClient<Channel>) {
 }
 
 async fn event_sourced_test(client: &mut EventSourcedClient<Channel>) {
-    let item1 = LineItem {
-        product_id: "soap33".to_string(),
-        name: "soap".to_string(),
-        quantity: 12,
-    };
 
-    let cart = Cart {
-        items: vec![item1],
-    };
-
-    let snapshot = EventSourcedSnapshot {
-        snapshot_sequence: 42,
-        snapshot: Some(cart.to_any("type.googleapis.com/com.example.shoppingcart.persistence.Cart")),
-    };
-
-    use event_sourced_stream_in::Message;
-
-    let init_msg = EventSourcedInit {
-        service_name: "com.example.shoppingcart.ShoppingCart".to_string(),
-        entity_id: "shopcart_entity_id".to_string(),
-        snapshot: Some(snapshot),
-    };
-
-    let add_line_item = AddLineItem {
-        user_id: "user_id".to_owned(),
-        product_id: "product_id".to_owned(),
-        name: "Product Name".to_owned(),
-        quantity: 1,
-    };
-
-    let cmd_msg = Command {
-        entity_id: "shopcart_entity_id".to_string(),
-        id: 56,
-        name: "command_name".to_string(),
-        payload: Some(add_line_item.clone().to_any("type.googleapis.com/com.example.shoppingcart.AddLineItem")),
-        streamed: false,
-    };
+    let init_test_msg = InitTestMsg::new();
+    let add_one_item_command = AddOneItemTestMsg::new();
 
     let requests = msgs_to_stream_in(
         vec![
-            Message::Init(init_msg),
-            Message::Command(cmd_msg.clone()),
+            Message::Init(init_test_msg.event_sourced_init),
+            Message::Command(add_one_item_command.command.clone()),
         ]
     );
 
@@ -117,7 +84,7 @@ async fn event_sourced_test(client: &mut EventSourcedClient<Channel>) {
 
     {
         let reply1 = inbound.expect_reply().await.expect("Expected Reply");
-        assert_eq!(reply1.command_id, cmd_msg.id);
+        assert_eq!(reply1.command_id, add_one_item_command.command.id);
 
         let reply_body = reply1.reply_payload().expect("Expected Action Reply");
         reply_body.decode::<Any>().expect("Expected empty reply");
@@ -125,12 +92,105 @@ async fn event_sourced_test(client: &mut EventSourcedClient<Channel>) {
         assert_eq!(reply1.events.len(), 1);
         let item = reply1.events[0].clone().decode::<ItemAdded>().expect("Expect ItemAdded event")
             .item.expect("Expect LineItem");
-        assert_eq!(item.product_id, add_line_item.product_id);
-        assert_eq!(item.name, add_line_item.name);
-        assert_eq!(item.quantity, add_line_item.quantity);
+        assert_eq!(item.product_id, add_one_item_command.add_line_item.product_id);
+        assert_eq!(item.name, add_one_item_command.add_line_item.name);
+        assert_eq!(item.quantity, add_one_item_command.add_line_item.quantity);
     }
 
     assert_eq!(inbound.message().await.unwrap(), None);
+}
+
+async fn event_sourced_snapshot_every_time_test(client: &mut EventSourcedClient<Channel>) {
+
+    let init_test_msg = InitTestMsg::new();
+    let add_one_item_command = AddOneItemTestMsg::new();
+
+    let requests = msgs_to_stream_in(
+        vec![
+            Message::Init(init_test_msg.event_sourced_init),
+            Message::Command(add_one_item_command.command.clone()),
+        ]
+    );
+
+    let response = client.handle(requests).await.unwrap();
+
+    let mut inbound = response.into_inner();
+
+    {
+        let reply1 = inbound.expect_reply().await.expect("Expected Reply");
+        assert_eq!(reply1.command_id, add_one_item_command.command.id);
+
+        let snapshot = reply1.snapshot.expect("Expected snapshot");
+
+        //TODO deserialize and verify snapshot
+    }
+
+    assert_eq!(inbound.message().await.unwrap(), None);
+}
+
+struct InitTestMsg {
+    event_sourced_init: EventSourcedInit,
+}
+
+impl InitTestMsg {
+
+    fn new() -> InitTestMsg {
+        let item1 = LineItem {
+            product_id: "soap33".to_string(),
+            name: "soap".to_string(),
+            quantity: 12,
+        };
+
+        let cart = Cart {
+            items: vec![item1],
+        };
+
+        let snapshot = EventSourcedSnapshot {
+            snapshot_sequence: 42,
+            snapshot: Some(cart.to_any("type.googleapis.com/com.example.shoppingcart.persistence.Cart")),
+        };
+
+
+        let event_sourced_init = EventSourcedInit {
+            // service_name: "com.example.shoppingcart.ShoppingCart".to_string(),
+            service_name: "snapshot-every-time".to_string(),
+            entity_id: "shopcart_entity_id".to_string(),
+            snapshot: Some(snapshot),
+        };
+        InitTestMsg {
+            event_sourced_init,
+        }
+    }
+}
+
+struct AddOneItemTestMsg {
+    add_line_item: AddLineItem,
+    command: Command
+}
+
+impl AddOneItemTestMsg {
+
+    fn new() -> AddOneItemTestMsg {
+        let add_line_item = AddLineItem {
+            user_id: "user_id".to_owned(),
+            product_id: "product_id".to_owned(),
+            name: "Product Name".to_owned(),
+            quantity: 1,
+        };
+
+        let command = Command {
+            entity_id: "shopcart_entity_id".to_string(),
+            id: 56,
+            name: "command_name".to_string(),
+            payload: Some(add_line_item.clone().to_any("type.googleapis.com/com.example.shoppingcart.AddLineItem")),
+            streamed: false,
+        };
+
+        AddOneItemTestMsg {
+            add_line_item,
+            command,
+        }
+    }
 }
 
 #[tonic::async_trait]
@@ -196,7 +256,7 @@ impl<T: prost::Message> ProstMessageExt for T {
 }
 
 fn msgs_to_stream_in<T>(msgs: T) -> impl tonic::IntoStreamingRequest<Message = EventSourcedStreamIn>
-    where T: IntoIterator<Item = event_sourced_stream_in::Message>
+    where T: IntoIterator<Item = Message>
 {
     let messages: Vec<_> = msgs.into_iter()
         .map(|msg| EventSourcedStreamIn { message: Some(msg.clone()) })
