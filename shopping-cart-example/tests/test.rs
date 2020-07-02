@@ -92,9 +92,7 @@ async fn event_sourced_test(client: &mut EventSourcedClient<Channel>) {
         assert_eq!(reply1.events.len(), 1);
         let item = reply1.events[0].clone().decode::<ItemAdded>().expect("Expect ItemAdded event")
             .item.expect("Expect LineItem");
-        assert_eq!(item.product_id, add_one_item_command.add_line_item.product_id);
-        assert_eq!(item.name, add_one_item_command.add_line_item.name);
-        assert_eq!(item.quantity, add_one_item_command.add_line_item.quantity);
+        assert_eq!(item, add_one_item_command.add_line_item.to_line_item());
     }
 
     assert_eq!(inbound.message().await.unwrap(), None);
@@ -122,13 +120,37 @@ async fn event_sourced_snapshot_every_time_test(client: &mut EventSourcedClient<
 
         let snapshot = reply1.snapshot.expect("Expected snapshot");
 
-        //TODO deserialize and verify snapshot
+        let cart = snapshot.decode::<Cart>().expect("Expect Cart snapshot");
+
+        assert_eq!(init_test_msg.cart.items.len(), 1);
+        let item1 = &init_test_msg.cart.items[0];
+
+        assert_eq!(cart.items.len(), 2);
+        assert!(cart.items.contains(&item1), "Expect containing initial snapshot item");
+
+        let expected_item = add_one_item_command.add_line_item.to_line_item();
+        assert!(cart.items.contains(&expected_item), "Expect containing added item");
     }
 
     assert_eq!(inbound.message().await.unwrap(), None);
 }
 
+trait AddLineItemExt {
+    fn to_line_item(&self) -> LineItem;
+}
+
+impl AddLineItemExt for AddLineItem {
+    fn to_line_item(&self) -> LineItem {
+        LineItem {
+            product_id: self.product_id.clone(),
+            name: self.name.clone(),
+            quantity: self.quantity,
+        }
+    }
+}
+
 struct InitTestMsg {
+    cart: Cart,
     event_sourced_init: EventSourcedInit,
 }
 
@@ -158,6 +180,7 @@ impl InitTestMsg {
             snapshot: Some(snapshot),
         };
         InitTestMsg {
+            cart,
             event_sourced_init,
         }
     }
@@ -234,6 +257,7 @@ trait AnyExt {
 
 impl AnyExt for Any {
     fn decode<T>(self) -> Option<T> where T: prost::Message + Default {
+        //TODO ideally it should take type_url into account, right now it only relies on T
         let bytes = Bytes::from(self.value);
         <T as prost::Message>::decode(bytes).ok()
     }

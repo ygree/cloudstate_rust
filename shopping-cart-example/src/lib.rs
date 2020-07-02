@@ -111,6 +111,10 @@ impl EventSourcedEntity for ShoppingCartEntity {
         self.snapshot_every
     }
 
+    fn take_snapshot(&self) -> Option<Self::Snapshot> {
+        Some(ShoppingCartSnapshot::Snapshot(self.cart_persistence()))
+    }
+
     fn handle_snapshot(&mut self, snapshot: Self::Snapshot) {
         let ShoppingCartSnapshot::Snapshot(cart) = snapshot;
 
@@ -147,7 +151,6 @@ impl EventSourcedEntity for ShoppingCartEntity {
             },
         }
     }
-
 }
 
 
@@ -191,15 +194,28 @@ impl ShoppingCartEntity {
 
     fn get_cart(&self, cart: GetShoppingCart) -> ShoppingCartReply {
         println!("Handle command: {:?}", cart);
-        ShoppingCartReply::Cart(
-            shoppingcart::Cart {
-                items: self.items.iter()
-                    .map(|(item_id, item_val)| shoppingcart::LineItem {
-                        product_id: item_id.clone(),
-                        name: item_val.name.clone(),
-                        quantity: item_val.qty,
-                    }).collect()
-            }
-        )
+        ShoppingCartReply::Cart(self.cart())
+    }
+
+    fn cart(&self) -> shoppingcart::Cart {
+        shoppingcart::Cart {
+            items: self.items.iter()
+                .map(|(item_id, item_val)| shoppingcart::LineItem {
+                    product_id: item_id.clone(),
+                    name: item_val.name.clone(),
+                    quantity: item_val.qty,
+                }).collect()
+        }
+    }
+
+    fn cart_persistence(&self) -> shoppingcart::persistence::Cart {
+        shoppingcart::persistence::Cart {
+            items: self.items.iter()
+                .map(|(item_id, item_val)| shoppingcart::persistence::LineItem {
+                    product_id: item_id.clone(),
+                    name: item_val.name.clone(),
+                    quantity: item_val.qty,
+                }).collect()
+        }
     }
 }

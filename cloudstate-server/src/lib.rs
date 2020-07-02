@@ -181,6 +181,7 @@ impl EventSourcedSession {
                             println!("Handling event: {}", &type_url);
                             let bytes = Bytes::from(event_any.value);
                             //TODO maybe verify evt.sequence to make sure no events where skipped?
+                            //TODO update snapshot_sequence
                             entity_handler.event_received(&type_url, bytes);
                         }
                     },
@@ -192,13 +193,13 @@ impl EventSourcedSession {
             },
             Message::Command(cmd) => {
                 match self {
-                    EventSourcedSession::Initialized { entity_handler, .. } => {
+                    EventSourcedSession::Initialized { entity_handler, snapshot_sequence } => {
                         match cmd.payload {
                             Some(payload_any) => {
                                 let type_url = payload_any.type_url;
                                 println!("Handling command: {}", type_url);
                                 let bytes = Bytes::from(payload_any.value);
-                                let entity_resp: EntityResponse = entity_handler.command_received(&type_url, bytes);
+                                let entity_resp: EntityResponse = entity_handler.command_received(&type_url, bytes, *snapshot_sequence);
 
                                 let client_action = match entity_resp.action {
                                     EntityAction::Reply { type_url, bytes } => {
@@ -258,10 +259,17 @@ impl EventSourcedSession {
                                         //TODO extract method to construct Any?
                                         ::prost_types::Any {
                                             type_url: tp,
-                                            value: bs.to_vec() //TODO get rid for the bytes type
+                                            value: bs.to_vec() //TODO maybe get rid of the bytes type here?
                                         }
                                     }
                                 ).collect();
+
+                                let snapshot = entity_resp.snapshot.map(|(type_url, bytes)| {
+                                    ::prost_types::Any {
+                                        type_url,
+                                        value: bytes,
+                                    }
+                                });
 
                                 use event_sourced_stream_out::Message::*;
 
@@ -270,7 +278,7 @@ impl EventSourcedSession {
                                     client_action: Some(client_action),
                                     side_effects: vec![], //TODO side effects
                                     events,
-                                    snapshot: None, //TODO snapshot
+                                    snapshot,
                                 };
                                 let out_msg = EventSourcedStreamOut {
                                     message: Some(Reply(reply)),

@@ -57,7 +57,6 @@ pub trait CommandContext<T: AnyMessage> {
 
 struct CommandContextData<T> {
     events: Vec<T>,
-    snapshot_every: Option<u32>,
 }
 
 impl<T: AnyMessage> CommandContext<T> for CommandContextData<T> {
@@ -88,10 +87,6 @@ pub trait EventSourcedEntity {
     type Snapshot : AnyMessage;
     type Response : AnyMessage;
 
-    fn snapshot_every(&self) -> Option<u32> {
-        None
-    }
-
     // This method is called by server and need to bind to the entity typed and delegate call to the user implementation
     fn snapshot_received(&mut self, type_url: &str, bytes: Bytes) {
         if let Some(snapshot) = <Self::Snapshot as AnyMessage>::decode(&type_url, bytes) {
@@ -104,17 +99,26 @@ pub trait EventSourcedEntity {
 
     fn handle_snapshot(&mut self, snapshot: Self::Snapshot);
 
-    fn command_received(&mut self, type_url: &str, bytes: Bytes) -> EntityResponse {
+    fn snapshot_every(&self) -> Option<u32> {
+        None
+    }
+
+    //TODO maybe extract snapshot taking into a separate trait to be able avoid implementing it?
+    fn take_snapshot(&self) -> Option<Self::Snapshot> {
+        None
+    }
+
+    fn command_received(&mut self, type_url: &str, bytes: Bytes, snapshot_sequence: i64) -> EntityResponse {
         println!("Handing received command {}", &type_url);
         if let Some(cmd) = <Self::Command as AnyMessage>::decode(&type_url, bytes) {
 
             let mut context = CommandContextData::<Self::Event> {
                 events: vec![],
-                snapshot_every: self.snapshot_every(),
-                //TODO pass event_handler to be called immediately on emit_event
             };
-
-            // self.event_received()
+            //TODO pass event_handler to be called immediately on emit_event
+            // doesn't seem to be working approach and Java client and some other implementations
+            // are seem to be broken. The problem is that if after an event was emitted
+            // it return a failure. In that case it doesn't rollback to the previous state.
 
             let result = self.handle_command(cmd, &mut context);
 
@@ -134,6 +138,21 @@ pub trait EventSourcedEntity {
 
             for (type_url, bytes) in events.iter() {
                 self.event_received(&type_url, bytes.clone());
+            }
+
+            let mut snapshot: Option<(String, Vec<u8>)> = None;
+
+            if let Some(snapshot_every) = self.snapshot_every() {
+                let new_snapshot_sequence = snapshot_sequence + events.len() as i64;
+                if new_snapshot_sequence % snapshot_every as i64 == 0 {
+                    //TODO prepare snapshot
+                    if let Some(s) = self.take_snapshot() {
+                        snapshot = <Self::Snapshot as AnyMessage>::encode(&s);
+                        //TODO log serialization error if it occurs
+                    } else {
+                        //TODO log that snapshot hasn't been given
+                    }
+                }
             }
 
             //TODO return an effect to be sent to Akka
@@ -165,7 +184,8 @@ pub trait EventSourcedEntity {
 
             EntityResponse {
                 action,
-                events
+                events,
+                snapshot,
             }
         } else {
             println!("Couldn't decode command {}", type_url);
@@ -174,6 +194,7 @@ pub trait EventSourcedEntity {
                     msg: "Server error: couldn't encode the response".to_owned()
                 },
                 events: vec![],
+                snapshot: None,
             }
         }
     }
@@ -208,15 +229,15 @@ pub enum EntityAction {
 pub struct EntityResponse {
     pub action: EntityAction,
     pub events: Vec<(String, Bytes)>,
+    pub snapshot: Option<(String, Vec<u8>)>,
 // side_effects: vec![], //TODO side effects
-// snapshot: None, //TODO snapshot
 }
 
 
 // this is untyped entity handler interface for the server implementation
 pub trait EventSourcedEntityHandler {
     fn snapshot_received(&mut self, type_url: &str, bytes: Bytes);
-    fn command_received(&mut self, type_url: &str, bytes: Bytes) -> EntityResponse;
+    fn command_received(&mut self, type_url: &str, bytes: Bytes, snapshot_sequence: i64) -> EntityResponse;
     fn event_received(&mut self, type_url: &str, bytes: Bytes);
 }
 
@@ -230,10 +251,10 @@ impl<T> EventSourcedEntityHandler for T
     }
 
     #[inline]
-    fn command_received(&mut self, type_url: &str, bytes: Bytes) -> EntityResponse {
+    fn command_received(&mut self, type_url: &str, bytes: Bytes, snapshot_sequence: i64) -> EntityResponse {
         // can't decode command here because a real type is needed that is an associated type
         // but associated types don't work with trait objects
-        self.command_received(type_url, bytes)
+        self.command_received(type_url, bytes, snapshot_sequence)
     }
 
     #[inline]
