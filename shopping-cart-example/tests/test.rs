@@ -45,6 +45,7 @@ fn test() {
     rt.block_on(discovery_test(&mut entity_discovery_client));
     rt.block_on(event_sourced_test(&mut event_sourced_client));
     rt.block_on(event_sourced_snapshot_every_time_test(&mut event_sourced_client));
+    rt.block_on(event_sourced_snapshot_every_second_time_test(&mut event_sourced_client));
 }
 
 async fn discovery_test(client: &mut EntityDiscoveryClient<Channel>) {
@@ -68,7 +69,7 @@ async fn discovery_test(client: &mut EntityDiscoveryClient<Channel>) {
 
 async fn event_sourced_test(client: &mut EventSourcedClient<Channel>) {
 
-    let init_test_msg = InitTestMsg::new();
+    let init_test_msg = InitTestMsg::new("com.example.shoppingcart.ShoppingCart");
     let add_one_item_command = AddOneItemTestMsg::new();
 
     let requests = msgs_to_stream_in(
@@ -100,7 +101,7 @@ async fn event_sourced_test(client: &mut EventSourcedClient<Channel>) {
 
 async fn event_sourced_snapshot_every_time_test(client: &mut EventSourcedClient<Channel>) {
 
-    let init_test_msg = InitTestMsg::new();
+    let init_test_msg = InitTestMsg::new("snapshot-every-time");
     let add_one_item_command = AddOneItemTestMsg::new();
 
     let requests = msgs_to_stream_in(
@@ -135,6 +136,52 @@ async fn event_sourced_snapshot_every_time_test(client: &mut EventSourcedClient<
     assert_eq!(inbound.message().await.unwrap(), None);
 }
 
+async fn event_sourced_snapshot_every_second_time_test(client: &mut EventSourcedClient<Channel>) {
+
+    let init_test_msg = InitTestMsg::new("snapshot-every-second-time");
+    let add_one_item_command = AddOneItemTestMsg::new();
+
+    let requests = msgs_to_stream_in(
+        vec![
+            Message::Init(init_test_msg.event_sourced_init),
+            Message::Command(add_one_item_command.command.clone()),
+            Message::Command(add_one_item_command.command.clone()),
+        ]
+    );
+
+    let response = client.handle(requests).await.unwrap();
+
+    let mut inbound = response.into_inner();
+
+    {
+        let reply1 = inbound.expect_reply().await.expect("Expected Reply");
+        assert_eq!(reply1.command_id, add_one_item_command.command.id);
+
+        assert!(reply1.snapshot.is_none(), "Expect no snapshot after the first command");
+    }
+
+    {
+        let reply = inbound.expect_reply().await.expect("Expected second reply");
+        assert_eq!(reply.command_id, add_one_item_command.command.id);
+
+        let snapshot = reply.snapshot.expect("Expected snapshot");
+
+        let cart = snapshot.decode::<Cart>().expect("Expect Cart snapshot");
+
+        assert_eq!(init_test_msg.cart.items.len(), 1);
+        let item1 = &init_test_msg.cart.items[0];
+
+        assert_eq!(cart.items.len(), 2);
+        assert!(cart.items.contains(&item1), "Expect containing initial snapshot item");
+
+        let mut expected_item = add_one_item_command.add_line_item.to_line_item().clone();
+        expected_item.quantity *= 2; // the item has been added twice
+        assert!(cart.items.contains(&expected_item), "Expect containing added item");
+    }
+
+    assert_eq!(inbound.message().await.unwrap(), None);
+}
+
 trait AddLineItemExt {
     fn to_line_item(&self) -> LineItem;
 }
@@ -156,7 +203,7 @@ struct InitTestMsg {
 
 impl InitTestMsg {
 
-    fn new() -> InitTestMsg {
+    fn new(service_name: &str) -> InitTestMsg {
         let item1 = LineItem {
             product_id: "soap33".to_string(),
             name: "soap".to_string(),
@@ -175,7 +222,7 @@ impl InitTestMsg {
 
         let event_sourced_init = EventSourcedInit {
             // service_name: "com.example.shoppingcart.ShoppingCart".to_string(),
-            service_name: "snapshot-every-time".to_string(),
+            service_name: service_name.to_owned(),
             entity_id: "shopcart_entity_id".to_string(),
             snapshot: Some(snapshot),
         };

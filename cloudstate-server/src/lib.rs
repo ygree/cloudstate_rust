@@ -181,7 +181,7 @@ impl EventSourcedSession {
                             println!("Handling event: {}", &type_url);
                             let bytes = Bytes::from(event_any.value);
                             //TODO maybe verify evt.sequence to make sure no events where skipped?
-                            //TODO update snapshot_sequence
+                            //TODO update snapshot_sequence!
                             entity_handler.event_received(&type_url, bytes);
                         }
                     },
@@ -193,7 +193,7 @@ impl EventSourcedSession {
             },
             Message::Command(cmd) => {
                 match self {
-                    EventSourcedSession::Initialized { entity_handler, snapshot_sequence } => {
+                    EventSourcedSession::Initialized { entity_handler, ref mut snapshot_sequence } => {
                         match cmd.payload {
                             Some(payload_any) => {
                                 let type_url = payload_any.type_url;
@@ -263,6 +263,9 @@ impl EventSourcedSession {
                                         }
                                     }
                                 ).collect();
+
+                                // Increase snapshot_sequence by the number of emitted events
+                                *snapshot_sequence += events.len() as i64;
 
                                 let snapshot = entity_resp.snapshot.map(|(type_url, bytes)| {
                                     ::prost_types::Any {
